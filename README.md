@@ -166,5 +166,5 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 
 ## Authors
 
-Przemyslaw Marcowski, PhD <p.marcowski@gmail.com>
+Przemyslaw Marcowski, PhD <p.marcowski@gmail.com>\
 Jakub Krawiec, PhD <krawiecjm@gmail.com>
