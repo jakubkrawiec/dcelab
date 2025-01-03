@@ -5,6 +5,15 @@
 .Ruserdata
 *.Rproj
 
+# RStudio
+.Renviron
+.Rprofile
+*.knit.md
+*.utf8.md
+.httr-oauth
+rsconnect/
+*_cache/
+
 # Package specific
 *.tar.gz
 *.Rcheck/
@@ -12,15 +21,16 @@
 # Experiment resources
 droptoken.rds
 app/resources/*
-!app/resources/.gitkeep
 
 # Data
 data/raw/*
-!data/raw/.gitkeep
 data/processed/*
-!data/processed/.gitkeep
 
-# System files
+# Logs
+*.log
+logs/
+
+# System Files
 .DS_Store
 Thumbs.db
 *.swp
@@ -32,19 +42,6 @@ Thumbs.db
 .vscode/
 *.sublime-project
 *.sublime-workspace
-
-# RStudio
-.Renviron
-.Rprofile
-*.knit.md
-*.utf8.md
-.httr-oauth
-rsconnect/
-*_cache/
-
-# Logs
-*.log
-logs/
 
 # Archive
 archive/
