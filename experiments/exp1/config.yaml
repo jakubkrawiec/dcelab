@@ -1,0 +1,27 @@
+# Experiment identifier
+exp_id: "exp1"
+
+# Experimental design parameters
+design:
+  n_sets: 35             			# Total number of choice sets
+  n_total: 35            			# Number of sets to present
+  n_alts: 2              			# Number of alternatives
+  alternatives:          			# Alternative labels
+    - "Option A"
+    - "Option B"
+  alt_cte: [0, 0]       			# Alternative-specific constants
+  no_choice: null       			# No-choice option (null = disabled)
+
+# User interface settings
+ui:
+  buttons_text: "Which option do you prefer?"   # Text above buttons
+
+# Data storage configuration
+storage:
+  dropbox:
+    base_path: "Repos/dcelab"              	# Base path in Dropbox
+    data_path: "data/raw"                  	# Directory for experiment data
+
+# Post-experiment settings
+completion:
+  url: "YOUR_REDIRECT_URL"  			# Redirect URL
