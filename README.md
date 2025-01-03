@@ -58,7 +58,7 @@ install.packages(c(
 3. Create your experiment directory following `exp1` template
 4. Configure Dropbox authentication
 5. Run preparation script
-6. Launch the Shiny app
+6. Deploy the Shiny app or launch locally
 
 ## Setup
 
