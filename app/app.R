@@ -98,7 +98,7 @@ server <- function(input, output, session) {
     # Update set number display
     if (V$sn <= config$design$n_total) {
       output$set_nr <- renderText(
-        paste("Wybór:", V$sn, "/", config$design$n_total)
+        paste("Choice:", V$sn, "/", config$design$n_total)
       )
     } else {
       output$set_nr <- renderText(NULL)
