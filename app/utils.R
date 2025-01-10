@@ -1,7 +1,7 @@
-#' DCE Application Helper Functions
+#' DCE Application Utility Functions
 #'
 #' @description
-#' Helper functions for the DCE Shiny application:
+#' Utility functions for the DCE Shiny application:
 #' - Choice set selection and formatting
 #' - Data saving and manipulation
 #'
@@ -39,6 +39,12 @@ select_choice_set <- function(V, design, bs, es, atts, atts_lvls, atts_coding,
   choice_set <- t(choice_set[, 1:n_atts])
   colnames(choice_set) <- config$design$alternatives
   rownames(choice_set) <- names(atts_lvls)
+  
+  # Shuffle attributes if configured
+  if (config$ui$shuffle_attributes) {
+    row_order <- sample(nrow(choice_set))
+    choice_set <- choice_set[row_order, , drop = FALSE]
+  }
   
   return(choice_set)
 }
