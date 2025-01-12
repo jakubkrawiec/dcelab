@@ -1,6 +1,9 @@
 # Toolkit for building and deploying Discrete Choice Experiments (DCE) with Shiny
 
 Configurable framework for running Discrete Choice Experiments (DCE) using R Shiny.
+Built upon the [idefix](https://github.com/traets/idefix) R package for generating 
+D-efficient designs, it adds experiment configuration, web deployment infrastructure, 
+and automated data collection.
 
 ## Project Structure
 
@@ -21,7 +24,8 @@ Configurable framework for running Discrete Choice Experiments (DCE) using R Shi
 │       ├── intro.txt       # Opening text
 │       └── outro.txt       # Closing text
 ├── R/                      # Core functions
-│   └── design.R            # Design generation functions
+│   ├── design.R            # Design generation functions
+│   └── helpers.R           # Helper functions
 └── run.R                   # Experiment preparation script
 ```
 
@@ -38,7 +42,8 @@ install.packages(c(
   "idefix",
   "rdrop2",
   "tmvtnorm",
-  "yaml"
+  "yaml",
+  "rsconnect"
 ))
 ```
 
@@ -50,6 +55,7 @@ install.packages(c(
 - Automatic data storage to Dropbox
 - Progress tracking and completion redirect
 - Configurable attributes and levels
+- Local and shinyapps.io deployment options
 
 ## Getting Started
 
@@ -57,77 +63,99 @@ install.packages(c(
 2. Install required packages
 3. Create your experiment directory following `exp1` template
 4. Configure Dropbox authentication
-5. Run preparation script
-6. Deploy the Shiny app or launch locally
+5. Configure shinyapps.io deployment (optional)
+6. Run preparation script
+7. Deploy the Shiny app (locally or to shinyapps.io)
 
 ## Setup
 
-1. Configure Dropbox authentication:
+### 1. Configure Dropbox authentication:
 
 ```r
 token <- rdrop2::drop_auth()
 saveRDS(token, "experiments/exp1/droptoken.rds")
 ```
 
-2. Configure your experiment in `experiments/exp1/config.yaml`:
+### 2. Configure your experiment in `experiments/exp1/config.yaml`:
 
 ```yaml
-# Unique identifier for the experiment
+# Experiment identifier
 exp_id: "exp1"
 
 # Experimental design parameters
 design:
-  n_sets: 35             # Total number of choice sets
-  n_total: 35            # Number of sets to present
-  n_alts: 2              # Number of alternatives
-  alternatives:          # Alternative labels
+  n_sets: 35                                  # Total number of choice sets
+  n_total: 35                                 # Number of sets to present
+  n_alts: 2                                   # Number of alternatives
+  alternatives:                               # Alternative labels
     - "Option A"
     - "Option B"
-  alt_cte: [0, 0]       # Alternative-specific constants
-  no_choice: null       # No-choice option (null = disabled)
+  alt_cte: [0, 0]                             # Alternative-specific constants
+  no_choice: null                             # No-choice option (null = disabled)
 
 # User interface settings
 ui:
-  buttons_text: "Which option do you prefer?"
+  buttons_text: "Which option do you prefer?" # Text above buttons
+  shuffle_attributes: false                   # Whether to randomize attribute order
 
 # Data storage configuration
 storage:
   dropbox:
-    base_path: "Projects/dce-experiments"  # Base path in Dropbox
-    data_path: "data/base"                 # Directory for experiment data
+    base_path: "Repos/dcelab"                 # Base path in Dropbox
+    data_path: "data/raw"                     # Directory for experiment data
 
 # Post-experiment settings
 completion:
-  url: "https://psychodpt.fra1.qualtrics.com/jfe/form/SV_5omLD5XXcDF59pc"  # Redirect URL
+  url: "your-redirect-url"                    # Redirect URL
+
+# Deployment configuration
+deployment:
+  enabled: false                              # Whether to deploy to shinyapps.io
+  appname: null                               # App name (defaults to exp_id)
+  account:
+    name: "your-account"                      # Required: shinyapps.io account name
+    token: "your-token"                       # Optional: token from dashboard
+    secret: "your-secret"                     # Optional: secret from dashboard
 ```
 
-3. Define attributes in `attributes.csv` with labels for:
-   - Monthly savings contribution
-   - Number of participating peers
-   - Employer contribution
-   - Salary increase provisions
-   - Current account balance
-   - Government contribution
+### 3. Define attributes in `attributes.csv` with labels for:
+- Monthly savings contribution
+- Number of participating peers
+- Employer contribution
+- Salary increase provisions
+- Current account balance
+- Government contribution
 
 ## Deployment
 
-1. Prepare the experiment:
+### Local Deployment
+
+Run the preparation script and launch the application locally:
 
 ```r
-source("run.R")
+source("run.R")            # Prepare experiment
+shiny::runApp("app")       # Run locally
 ```
 
-This script will:
+### shinyapps.io Deployment
+
+1. Set up shinyapps.io account and obtain credentials from the dashboard
+2. Configure deployment in `config.yaml`:
+   - Set `deployment.enabled: true`
+   - Add account credentials
+   - Optionally specify custom app name
+3. Run the preparation script:
+
+```r
+   source("run.R")         # Will prepare and deploy if enabled
+```
+
+The preparation script will:
 - Create necessary directories
 - Copy configuration files
-- Generate D-optimal design (if needed)
+- Generate D-optimal design
 - Set up data paths
-
-2. Run the application:
-
-```r
-shiny::runApp("app")
-```
+- Deploy to shinyapps.io (if enabled)
 
 ## Data Storage
 
@@ -140,31 +168,28 @@ Response data is automatically saved to Dropbox in two formats:
 To set up a new experiment:
 
 1. Create a new experiment directory in `experiments/` (e.g., `experiments/exp1/`) containing:
-
-- `config.yaml`: Experiment configuration
-- `attributes.csv`: Attribute definitions
-- `intro.txt`: Introduction text
-- `outro.txt`: Closing text
-- `droptoken.Rds`: Dropbox authentication token
+   - `config.yaml`: Experiment configuration
+   - `attributes.csv`: Attribute definitions
+   - `intro.txt`: Introduction text
+   - `outro.txt`: Closing text
+   - `droptoken.Rds`: Dropbox authentication token
 
 2. Run the preparation script `run.R`:
+   - Creates necessary directories (`app/resources/`, `data/raw/exp1/`)
+   - Copies experiment resources to the deployment directory
+   - Generates and saves the experimental design
+   - Sets up data paths
+   - Deploys to shinyapps.io (if configured)
 
-The script will:
-
-- Create necessary directories (`app/resources/`, `data/raw/exp1/`)
-- Copy experiment resources to the deployment directory
-- Generate and save the experimental design (if not exists)
-- Set up data paths
-
-The design generation uses helper functions from `R/design.R` and will only occur if `design.Rds` doesn't exist in the resources directory.
+The design generation uses helper functions from `R/design.R`.
 
 > Check `run.R` for implementation details and `R/design.R` for design generation helper functions.
 
 ## License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+This project is licensed under the GNU General Public License v3.0 - see [LICENSE](LICENSE) for details.
 
 ## Authors
 
-Przemyslaw Marcowski, PhD <p.marcowski@gmail.com>\
+Przemyslaw Marcowski, PhD <p.marcowski@gmail.com>
 Jakub Krawiec, PhD <krawiecjm@gmail.com>
