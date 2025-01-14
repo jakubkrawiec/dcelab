@@ -79,13 +79,21 @@ saveRDS(token, "experiments/exp1/droptoken.rds")
 ### 2. Configure your experiment in `experiments/exp1/config.yaml`:
 
 ```yaml
+# Configuration Guide
+#
+# - Use quotes only for:
+#   - Text with spaces ("Option A")
+#   - URLs ("https://...")
+#   - Special characters ("$5/month")
+# - Everything else should be unquoted
+
 # Experiment identifier
-exp_id: "exp1"
+exp_id: exp1
 
 # Experimental design parameters
 design:
-  n_sets: 35                                  # Total number of choice sets
-  n_total: 35                                 # Number of sets to present
+  n_sets: 30                                  # Total number of choice sets
+  n_total: 30                                 # Number of sets to present
   n_alts: 2                                   # Number of alternatives
   alternatives:                               # Alternative labels
     - "Option A"
@@ -101,8 +109,8 @@ ui:
 # Data storage configuration
 storage:
   dropbox:
-    base_path: "Repos/dcelab"                 # Base path in Dropbox
-    data_path: "data/raw"                     # Directory for experiment data
+    base_path: Repos/dcelab                   # Base path in Dropbox
+    data_path: data/raw                       # Directory for experiment data
 
 # Post-experiment settings
 completion:
@@ -113,9 +121,9 @@ deployment:
   enabled: false                              # Whether to deploy to shinyapps.io
   appname: null                               # App name (defaults to exp_id)
   account:
-    name: "your-account"                      # Required: shinyapps.io account name
-    token: "your-token"                       # Optional: token from dashboard
-    secret: "your-secret"                     # Optional: secret from dashboard
+    name: your-account                        # Required: shinyapps.io account name
+    token: your-token                         # Optional: token from dashboard
+    secret: your-secret                       # Optional: secret from dashboard
 ```
 
 ### 3. Define attributes in `attributes.csv` with labels for:
