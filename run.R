@@ -29,6 +29,23 @@ dir.create(data_path, recursive = TRUE, showWarnings = FALSE)
 config <- yaml::read_yaml(file.path(exp_path, "config.yaml"))
 validate_config(config)
 
+# Define experiment resources
+exp_files <- c(
+  "config.yaml", 
+  "attributes.csv", 
+  "intro.txt", 
+  "outro.txt"
+  )
+
+# Copy resources
+for (file in exp_files) {
+  file.copy(
+    file.path(exp_path, file),
+    file.path(resources_path, file),
+    overwrite = TRUE
+  )
+}
+
 # Process attributes
 atts <- read.csv(
   file.path(exp_path, "attributes.csv"), 

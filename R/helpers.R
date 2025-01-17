@@ -12,12 +12,11 @@
 #' @return NULL invisibly, errors if validation fails
 #' @export
 validate_config <- function(config) {
-  # Define required fields and their validation functions
   required_fields <- list(
     "exp_id" = is.character,
     "design" = function(x) is.list(x) && all(c("n_sets", "n_total", "n_alts", "alternatives", "alt_cte") %in% names(x)),
     "ui" = function(x) is.list(x) && all(c("buttons_text", "shuffle_attributes") %in% names(x)),
-    "storage" = function(x) is.list(x) && "dropbox" %in% names(x),
+    "storage" = function(x) is.list(x) && "s3" %in% names(x) && "bucket" %in% names(x$s3),
     "completion" = function(x) is.list(x) && "url" %in% names(x)
   )
   
@@ -101,3 +100,4 @@ validate_custom_attributes <- function(config) {
   
   invisible(NULL)
 }
+

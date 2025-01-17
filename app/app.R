@@ -8,7 +8,7 @@
 
 library(shiny)
 library(shinyjs)
-library(rdrop2)
+library(aws.s3)
 library(tidyverse)
 library(idefix)
 library(tmvtnorm)
@@ -24,6 +24,12 @@ atts <- read.csv(file.path(resources_path, "attributes.csv"),
                  encoding = "UTF-8")
 design <- readRDS(file.path(resources_path, "design.rds"))
 drop_token <- readRDS(file.path(resources_path, "droptoken.rds"))
+
+Sys.setenv(
+  AWS_ACCESS_KEY_ID = config$storage$s3$access_key,
+  AWS_SECRET_ACCESS_KEY = config$storage$s3$secret_key,
+  AWS_DEFAULT_REGION = config$storage$s3$region
+)
 
 # Load custom functions if configured
 custom_funcs <- NULL
@@ -188,8 +194,7 @@ server <- function(input, output, session) {
         data = V$survey_data,
         config = config,
         exp_id = config$exp_id,
-        n_atts = n_atts,
-        token = drop_token
+        n_atts = n_atts
       )
     }
 

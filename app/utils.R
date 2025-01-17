@@ -199,19 +199,28 @@ save_experiment_data <- function(data, config, exp_id, n_atts, token) {
     as.data.frame(data$survey, stringsAsFactors = FALSE, check.names = FALSE),
     resp = rep(data$responses, each = survey_rows),
     row.names = NULL
-  )
+    )
 
   # Generate filename with timestamp
   timestamp <- as.integer(Sys.time())
+  
   choice_filename <- sprintf("%s.txt", timestamp)
 
   # Save data file to Dropbox
   save_to_dropbox(choice_data, choice_filename, config, exp_id, token)
 
+  num_name <- sprintf("%s_num_data.txt", timestamp)
+  char_name <- sprintf("%s_char_data.txt", timestamp)
+  
+  # Save files to S3
+  save_to_s3(d, num_name, config, exp_id)
+  save_to_s3(unc_d, char_name, config, exp_id)
+  
   invisible(NULL)
 }
 
-#' Save Data to Dropbox
+
+#' Save Data to S3
 #'
 #' @param data data.frame data to save
 #' @param filename character filename
@@ -220,24 +229,18 @@ save_experiment_data <- function(data, config, exp_id, n_atts, token) {
 #' @param token rdrop2 authentication token
 #' @return NULL
 #' @export
-save_to_dropbox <- function(data, filename, config, exp_id, token) {
-  rownames(data) <- NULL
-
+save_to_s3 <- function(data, filename, config, exp_id) {
   # Create temporary file
   path <- file.path(tempdir(), filename)
-  write.table(
-    data, path, row.names = FALSE, quote = FALSE,
-    sep = "\t", col.names = TRUE
-    )
-
-  # Upload to Dropbox
-  dropbox_path <- file.path(
-    config$storage$dropbox$base_path,
-    config$storage$dropbox$data_path,
-    exp_id
+  write.table(data, path, row.names = TRUE, quote = FALSE,
+              sep = "\t", col.names = NA)
+  
+  # Upload directly to the bucket
+  aws.s3::put_object(
+    file = path,
+    object = filename,  # Po prostu nazwa pliku
+    bucket = config$storage$s3$bucket
   )
-
-  rdrop2::drop_upload(path, path = dropbox_path, dtoken = token)
-
+  
   invisible(NULL)
 }
