@@ -20,8 +20,8 @@ rsconnect/
 
 # Experiment resources
 droptoken.rds
-app/resources/*
-!app/resources/.gitkeep
+app/www/*
+!app/www/.gitkeep
 
 # Data
 data/raw/*

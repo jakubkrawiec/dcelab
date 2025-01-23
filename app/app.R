@@ -1,10 +1,7 @@
 #' Discrete Choice Experiment Shiny Application
 #'
 #' @description
-#' Main Shiny application for running DCE experiments. Handles:
-#' - Choice set presentation and data collection
-#' - Response recording and data storage
-#' - Progress tracking and completion
+#' Main Shiny application for running DCE experiments
 #'
 #' @author Przemyslaw Marcowski, PhD <p.marcowski@gmail.com>
 #' @date 2024-12-24
@@ -19,11 +16,20 @@ library(tmvtnorm)
 source("utils.R")
 
 # Load configuration and resources
-resources_path <- "resources"
+resources_path <- "www"
 config <- yaml::read_yaml(file.path(resources_path, "config.yaml"))
-atts <- read.csv(file.path(resources_path, "attributes.csv"), na.strings = c(""), check.names = FALSE, encoding = "UTF-8")
-des <- readRDS(file.path(resources_path, "design.rds"))
+atts <- read.csv(file.path(resources_path, "attributes.csv"),
+                 na.strings = c(""),
+                 check.names = FALSE,
+                 encoding = "UTF-8")
+design <- readRDS(file.path(resources_path, "design.rds"))
 drop_token <- readRDS(file.path(resources_path, "droptoken.rds"))
+
+# Load custom functions if configured
+custom_funcs <- NULL
+if (!is.null(config$custom_attributes)) {
+  custom_funcs <- load_custom_functions(config, resources_path)
+}
 
 # Process attributes
 atts_names <- colnames(atts)
@@ -34,12 +40,30 @@ atts_coding <- rep("E", length(atts))
 n_atts <- length(atts_labs)
 
 # Initialize design parameters
-bs <- seq(1, (nrow(des$design) - config$design$n_alts + 1), config$design$n_alts)
-es <- c((bs - 1), nrow(des$design))[-1]
+bs <- seq(1, (nrow(design$design) - config$design$n_alts + 1), config$design$n_alts)
+es <- c((bs - 1), nrow(design$design))[-1]
+
+# Set app name if provided (default is exp_id)
+app_name <- if (!is.null(config$deployment$appname)) config$deployment$appname else exp_id
 
 # Define UI
 ui <- fluidPage(
+  title = app_name,
   useShinyjs(),
+  tags$head(
+    tags$style(HTML("
+      .choice-table td {
+        vertical-align: middle !important;
+        text-align: center !important;
+      }
+      .choice-table th:first-child {
+        text-align: left !important;
+      }
+      .choice-table td:first-child {
+        text-align: left !important;
+      }
+    "))
+  ),
   column(12, align = "center",
          style = "padding-top:200px; padding-bottom:5px",
          textOutput("set_nr")),
@@ -62,10 +86,11 @@ server <- function(input, output, session) {
   # Initialize reactive values
   V <- reactiveValues(
     sn = 0,
-    fulldes = des$design,
+    fulldes = design$design,
     choice_set = NA,
     choice_sets = matrix(NA, nrow = (config$design$n_sets * config$design$n_alts),
                          ncol = n_atts),
+    custom_funcs = custom_funcs,
     sdata = list(),
     survey_data = list(),
     y_bin = numeric(),
@@ -106,10 +131,9 @@ server <- function(input, output, session) {
 
     # Handle choice sets
     if (V$sn <= config$design$n_total) {
-      # Select and display current choice set
       current_set <- select_choice_set(
         V = V,
-        design = des$design,
+        design = design$design,
         bs = bs,
         es = es,
         atts = atts,
@@ -119,9 +143,14 @@ server <- function(input, output, session) {
         config = config
       )
 
-      output$choice_set <- renderTable(current_set, rownames = TRUE)
+      output$choice_set <- renderTable(
+        current_set,
+        rownames = TRUE,
+        sanitize.text.function = function(x) x,
+        class = "choice-table",
+        align = paste0('l', paste0(rep('c', ncol(current_set)), collapse = ''))
+      )
 
-      # Store choice set
       if (V$sn == 1) {
         V$choice_sets <- current_set
       } else {
@@ -134,7 +163,6 @@ server <- function(input, output, session) {
         output$end <- renderText(
           readLines(file.path(resources_path, "outro.txt"), encoding = "UTF-8")
         )
-        # Enable OK after outro is displayed
         shinyjs::delay(100, enable("OK"))
       }
     }

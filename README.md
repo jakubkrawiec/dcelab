@@ -1,32 +1,32 @@
 # Toolkit for building and deploying Discrete Choice Experiments (DCE) with Shiny
 
 Configurable framework for running Discrete Choice Experiments (DCE) using R Shiny.
-Built upon the [idefix](https://github.com/traets/idefix) R package for generating 
-D-efficient designs, it adds experiment configuration, web deployment infrastructure, 
+Built upon the [idefix](https://github.com/traets/idefix) R package for generating
+D-efficient designs, it adds experiment configuration, web deployment infrastructure,
 and automated data collection.
 
 ## Project Structure
 
 ```
 .
-├── app/                    # Deployment directory
-│   ├── app.R               # Main Shiny application
-│   ├── utils.R             # Helper functions
-│   └── resources/          # Generated experiment resources
-├── data/                   # Data directory
-│   ├── raw/                # Raw experiment data
-│   └── processed/          # Processed results
-├── experiments/            # Experiment definitions
-│   └── exp1/               # Specific experiment
-│       ├── config.yaml     # Experiment configuration
-│       ├── droptoken.rds   # Dropbox authentication
-│       ├── attributes.csv  # Attributes definition
-│       ├── intro.txt       # Opening text
-│       └── outro.txt       # Closing text
-├── R/                      # Core functions
-│   ├── design.R            # Design generation functions
-│   └── helpers.R           # Helper functions
-└── run.R                   # Experiment preparation script
+├── app/                      # Deployment directory
+│   ├── app.R                 # Main Shiny application
+│   ├── utils.R               # Helper functions
+│   └── www/                  # Experiment resources
+├── data/                     # Data directory
+│   ├── raw/                  # Raw experiment data
+│   └── processed/            # Processed results
+├── experiments/              # Experiment definitions
+│   └── example_experiment/   # Specific experiment
+│       ├── config.yaml       # Experiment configuration
+│       ├── attributes.csv    # Attributes definition
+│       ├── custom.csv        # Custom attribute functions
+│       ├── intro.txt         # Opening text
+│       └── outro.txt         # Closing text
+├── R/                        # Core functions
+│   ├── design.R              # Design generation functions
+│   └── helpers.R             # Helper functions
+└── run.R                     # Experiment preparation script
 ```
 
 ## Requirements
@@ -52,7 +52,7 @@ install.packages(c(
 - Dynamic choice experiment interface
 - D-optimal experimental design generation
 - Binary and multinomial choice options
-- Automatic data storage to Dropbox
+- Automatic data storage to cloud
 - Progress tracking and completion redirect
 - Configurable attributes and levels
 - Local and shinyapps.io deployment options
@@ -61,8 +61,8 @@ install.packages(c(
 
 1. Clone the repository
 2. Install required packages
-3. Create your experiment directory following `exp1` template
-4. Configure Dropbox authentication
+3. Create your experiment directory following `example_experiment` template
+4. Configure cloud authentication
 5. Configure shinyapps.io deployment (optional)
 6. Run preparation script
 7. Deploy the Shiny app (locally or to shinyapps.io)
@@ -73,66 +73,120 @@ install.packages(c(
 
 ```r
 token <- rdrop2::drop_auth()
-saveRDS(token, "experiments/exp1/droptoken.rds")
+saveRDS(token, "experiments/example_experiment/droptoken.rds")
 ```
 
-### 2. Configure your experiment in `experiments/exp1/config.yaml`:
+### 2. Configure your experiment in `experiments/example_experiment/config.yaml`:
 
 ```yaml
-# Configuration Guide
+# DCE Experiment Configuration
 #
-# - Use quotes only for:
-#   - Text with spaces ("Option A")
-#   - URLs ("https://...")
-#   - Special characters ("$5/month")
-# - Everything else should be unquoted
+# YAML Formatting Rules:
+# - Quote text with spaces/special chars: "Option A", "$5/month"
+# - Leave unquoted: numbers, booleans (true/false), null, simple-text
+#
+# Structure:
+# 1. exp_id            - Experiment identifier
+# 2. design            - Core experiment settings
+# 3. ui                - Interface settings
+# 4. storage           - Data management
+# 5. completion        - Post-experiment handling
+# Optional:
+# - custom_attributes  - Display functions
+# - deployment         - shinyapps.io settings
 
-# Experiment identifier
-exp_id: exp1
+# Unique identifier for this experiment
+exp_id: example_experiment
 
-# Experimental design parameters
+# Core experimental design configuration
 design:
-  n_sets: 30                                  # Total number of choice sets
-  n_total: 30                                 # Number of sets to present
-  n_alts: 2                                   # Number of alternatives
-  alternatives:                               # Alternative labels
-    - "Option A"
-    - "Option B"
-  alt_cte: [0, 0]                             # Alternative-specific constants
-  no_choice: null                             # No-choice option (null = disabled)
+  n_sets: 30                                    # Total number of choice sets in the design
+  n_total: 30                                   # Number of sets each participant will see
+  n_alts: 2                                     # Number of alternatives per choice set
+  alternatives:                                 # Labels shown for each alternative
+    - "Option A"                                # First alternative label
+    - "Option B"                                # Second alternative label
+  alt_cte: [0, 0]                               # Alternative-specific constants (0 = no constant)
+  no_choice: null                               # Optional no-choice option
 
-# User interface settings
+# User interface customization
 ui:
-  buttons_text: "Which option do you prefer?" # Text above buttons
-  shuffle_attributes: false                   # Whether to randomize attribute order
+  buttons_text: "Which option do you prefer?"   # Text shown above choice buttons
+  shuffle_attributes: false                     # Whether to randomize attribute order
+
+# Custom attribute definitions
+custom_attributes:
+  display_image:
+    function_name: "display_image"              # Function name in custom.R
+    attribute_label: "Display Image"            # Label shown in the interface
+
+  display_text:
+    function_name: "display_majority_choice"    # Function name in custom.R
+    attribute_label: " "                        # Label shown in the interface
 
 # Data storage configuration
 storage:
   dropbox:
-    base_path: Repos/dcelab                   # Base path in Dropbox
-    data_path: data/raw                       # Directory for experiment data
+    base_path: Repos/dcelab                     # Root path
+    data_path: data/raw                         # Directory for experiment data
 
 # Post-experiment settings
 completion:
-  url: "your-redirect-url"                    # Redirect URL
+  url: "your-redirect-url"                      # Redirect URL after completion
 
 # Deployment configuration
 deployment:
-  enabled: false                              # Whether to deploy to shinyapps.io
-  appname: null                               # App name (defaults to exp_id)
+  enabled: false                                # Whether to auto-deploy
+  appname: null                                 # Custom application name
   account:
-    name: your-account                        # Required: shinyapps.io account name
-    token: your-token                         # Optional: token from dashboard
-    secret: your-secret                       # Optional: secret from dashboard
+    name: your-account                          # Account name
+    token: your-token                           # Account token
+    secret: your-secret                         # Account secret
 ```
 
-### 3. Define attributes in `attributes.csv` with labels for:
-- Monthly savings contribution
-- Number of participating peers
-- Employer contribution
-- Salary increase provisions
-- Current account balance
-- Government contribution
+### 3. Define attributes (columns) and their levels (rows) in `attributes.csv`
+
+### Custom Attributes
+
+The experiment supports custom attribute display functions defined in `config.yaml`:
+
+```yaml
+custom_attributes:
+  display_image:
+    function_name: "display_image"
+    attribute_label: "Display Image"
+  display_text:
+    function_name: "display_majority_choice"
+    attribute_label: " "
+```
+
+Custom functions must be defined in `experiments/{exp_id}/custom.R` and include:
+- Required parameter: `level`
+- Optional parameters: `choice_set`, `col_index`
+- Must return a character string (HTML allowed)
+
+Example custom function:
+```r
+display_image <- function(level, choice_set = NULL, col_index = NULL) {
+  sprintf('<img src="image%d.svg" style="width:48px;height:48px;">', level)
+}
+```
+
+### Attributes Configuration
+
+Define experiment attributes in `attributes.csv`:
+- Each column represents an attribute
+- Each row represents possible levels for that attribute
+- Empty cells are ignored
+- UTF-8 encoding required
+
+Example:
+```csv
+Amount,Friends,Image
+$10,None,1
+$20,Few,2
+$50,Many,3
+```
 
 ## Deployment
 
@@ -141,8 +195,8 @@ deployment:
 Run the preparation script and launch the application locally:
 
 ```r
-source("run.R")            # Prepare experiment
-shiny::runApp("app")       # Run locally
+source("run.R")                               # Prepare experiment
+shiny::runApp("app")                          # Run locally
 ```
 
 ### shinyapps.io Deployment
@@ -155,7 +209,7 @@ shiny::runApp("app")       # Run locally
 3. Run the preparation script:
 
 ```r
-   source("run.R")         # Will prepare and deploy if enabled
+   source("run.R")                            # Will prepare and deploy if enabled
 ```
 
 The preparation script will:
@@ -167,23 +221,21 @@ The preparation script will:
 
 ## Data Storage
 
-Response data is automatically saved to Dropbox in two formats:
-- Numeric data: Binary choice responses with design matrix (`{timestamp}_num_data.txt`)
-- Character data: Text responses with attribute levels (`{timestamp}_char_data.txt`)
+Response data is automatically saved to Dropbox as text responses with attribute levels (`{timestamp}.txt`)
 
 ## Experiment Preparation
 
 To set up a new experiment:
 
-1. Create a new experiment directory in `experiments/` (e.g., `experiments/exp1/`) containing:
+1. Create a new experiment directory in `experiments/` (e.g., `experiments/example_experiment/`) containing:
    - `config.yaml`: Experiment configuration
    - `attributes.csv`: Attribute definitions
    - `intro.txt`: Introduction text
    - `outro.txt`: Closing text
-   - `droptoken.Rds`: Dropbox authentication token
+   - `custom.R`: Custom attribute display functions (if using custom attributes)
 
 2. Run the preparation script `run.R`:
-   - Creates necessary directories (`app/resources/`, `data/raw/exp1/`)
+   - Creates necessary directories (`app/www/`, `data/raw/example_experiment/`)
    - Copies experiment resources to the deployment directory
    - Generates and saves the experimental design
    - Sets up data paths
