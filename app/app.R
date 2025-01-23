@@ -44,7 +44,7 @@ bs <- seq(1, (nrow(design$design) - config$design$n_alts + 1), config$design$n_a
 es <- c((bs - 1), nrow(design$design))[-1]
 
 # Set app name if provided (default is exp_id)
-app_name <- if (!is.null(config$deployment$appname)) config$deployment$appname else exp_id
+app_name <- if (!is.null(config$deployment$appname)) config$deployment$appname else config$exp_id
 
 # Define UI
 ui <- fluidPage(

@@ -5,14 +5,14 @@
 # - Leave unquoted: numbers, booleans (true/false), null, simple-text
 #
 # Structure:
-# 1. exp_id          - Experiment identifier
-# 2. design          - Core experiment settings
-# 3. ui              - Interface settings
-# 4. storage         - Data management
-# 5. completion      - Post-experiment handling
+# 1. exp_id             - Experiment identifier
+# 2. design             - Core experiment settings
+# 3. ui                 - Interface settings
+# 4. storage            - Data management
+# 5. completion         - Post-experiment handling
 # Optional:
-# - custom_attributes - Display functions
-# - deployment       - shinyapps.io settings
+# - custom_attributes   - Display functions
+# - deployment          - shinyapps.io settings
 
 # Unique identifier for this experiment
 exp_id: example_experiment
@@ -33,11 +33,11 @@ ui:
   buttons_text: "Which option do you prefer?"   # Text shown above choice buttons
   shuffle_attributes: false                     # Whether to randomize attribute order
 
-# Custom attribute definitions
+# Custom attribute definitions (optional)
 custom_attributes:
   display_image:
     function_name: "display_image"              # Function name in custom.R
-    attribute_label: "Display Image"            # Label shown in the interface
+    attribute_label: "Displayed image"          # Label shown in the interface
 
   display_text:
     function_name: "display_majority_choice"    # Function name in custom.R

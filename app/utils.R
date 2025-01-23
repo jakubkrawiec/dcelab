@@ -48,6 +48,62 @@ select_choice_set <- function(V, design, bs, es, atts, atts_lvls, atts_coding,
   return(choice_set)
 }
 
+#' Load Custom Attribute Functions
+#'
+#' @param config list Configuration object containing custom_attributes
+#' @param resources_path character Path to experiment resources directory
+#' @return list Named list of custom attribute functions
+#' @export
+load_custom_functions <- function(config, resources_path) {
+  # Return empty list if no custom attributes defined
+  if (is.null(config$custom_attributes)) {
+    return(list())
+  }
+  
+  # Check for custom.R file existence
+  custom_file <- file.path(resources_path, "custom.R")
+  if (!file.exists(custom_file)) {
+    stop("custom.R file not found in experiment directory")
+  }
+  
+  # Create new environment and load custom functions
+  env <- new.env()
+  source(custom_file, local = env)
+  
+  # Process each custom attribute function
+  custom_funcs <- list()
+  for (attr_name in names(config$custom_attributes)) {
+    # Get function name and verify existence
+    func_name <- config$custom_attributes[[attr_name]]$function_name
+    if (!exists(func_name, envir = env)) {
+      stop(sprintf("Function '%s' not found in custom.R", func_name))
+    }
+    
+    func <- get(func_name, envir = env)
+    if (!is.function(func)) {
+      stop(sprintf("'%s' must be a function", func_name))
+    }
+    
+    # Validate function parameters
+    formals <- names(formals(func))
+    required_params <- c("context")
+    missing_params <- setdiff(required_params, formals)
+    if (length(missing_params) > 0) {
+      stop(sprintf("Function '%s' must have parameter: %s", 
+                   func_name, paste(missing_params, collapse = ", ")))
+    }
+    
+    # Store function and metadata
+    custom_funcs[[attr_name]] <- list(
+      func = func,
+      label = config$custom_attributes[[attr_name]]$attribute_label,
+      function_name = func_name
+    )
+  }
+  
+  custom_funcs
+}
+
 #' Apply custom attribute functions to choice set
 #' @param choice_set matrix Current choice set matrix
 #' @param custom_funcs list Custom attribute functions
@@ -58,53 +114,39 @@ apply_custom_attributes <- function(choice_set, custom_funcs, config) {
   if (length(custom_funcs) == 0) return(choice_set)
 
   result <- choice_set
-  processed_rows <- character(0)
 
   # Process each custom attribute
   for (attr_name in names(custom_funcs)) {
     func_info <- custom_funcs[[attr_name]]
-
-    # Skip if no label specified
     if (is.null(func_info$label)) next
 
-    # Process each column
-    attr_values <- vapply(1:ncol(choice_set), function(col_idx) {
-      # Get the level value from the original attribute if it exists
-      level <- if (func_info$label %in% rownames(choice_set)) {
-        as.numeric(choice_set[func_info$label, col_idx])
-      } else {
-        NULL
-      }
+    # Createe context object
+    context <- list(
+      choice_set = choice_set,
+      config = config,
+      alternatives = config$design$alternatives
+    )
 
-      # Create the context list with only the necessary elements
-      context <- list(
-        choice_set = choice_set,
-        col_index = col_idx,
-        config = config,
-        alternatives = config$design$alternatives
-      )
-
+    # Apply function to each column
+    attr_values <- vapply(seq_len(ncol(choice_set)), function(col) {
+      context$col_index <- col
       tryCatch({
-        # Call the function with level and context as named arguments
-        do.call(func_info$func, list(level = level, context = context))
+        func_info$func(context = context)
       }, error = function(e) {
         warning(sprintf("Error in custom function '%s': %s", attr_name, e$message))
         ""
       })
     }, character(1))
 
-    # Remove existing row if it exists and add new values
-    if (func_info$label %in% rownames(result)) {
-      result <- result[!rownames(result) == func_info$label, , drop = FALSE]
-    }
-
-    # Add non-empty results as new row
-    if (any(!attr_values == "")) {
+    # Update result matrix if we got any non-empty values
+    if (any(attr_values != "")) {
+      if (func_info$label %in% rownames(result)) {
+        result <- result[rownames(result) != func_info$label, , drop = FALSE]
+      }
       new_row <- matrix(attr_values,
                        nrow = 1,
                        dimnames = list(func_info$label, colnames(choice_set)))
       result <- rbind(result, new_row)
-      processed_rows <- c(processed_rows, func_info$label)
     }
   }
 

@@ -8,24 +8,22 @@
 
 #' Display Image
 #'
-#' @param level numeric Level value (1-3)
 #' @param context list Context information including choice set and column index
 #' @return character HTML string for image display
 #' @export
-display_image <- function(level, context) {
+display_image <- function(context) {
+  col_index <- context$col_index
+  level <- as.numeric(context$choice_set["Displayed image", col_index])
   if (!is.numeric(level) || level < 1 || level > 3) return("")
   sprintf('<img src="image%d.svg" style="width:48px;height:48px;">', level)
 }
 
 #' Display Majority Choice Indicator
 #'
-#' @param level Ignored
 #' @param context list Context information including choice set and column index
 #' @return character HTML string for majority indicator
 #' @export
-display_majority_choice <- function(level, context) {
-  if (is.null(context$choice_set) || is.null(context$col_index)) return("")
-
+display_majority_choice <- function(context) {
   choice_set <- context$choice_set
   col_index <- context$col_index
 
@@ -34,13 +32,9 @@ display_majority_choice <- function(level, context) {
   employer_vals <- as.numeric(gsub("[^0-9]", "", choice_set["What amount would the employer contribute?", ]))
   totals <- state_vals + employer_vals
 
-  # Select the first column that has the maximum total
-  selected_index <- which.max(totals)
-
-  # Return message only for the selected option
-  if (col_index == selected_index) {
+  # Return message only for the column with maximum total
+  if (col_index == which.max(totals)) {
     return('<div style="color:#1a75ff;font-weight:bold;">Most people chose this option</div>')
   }
-
   return("")
 }

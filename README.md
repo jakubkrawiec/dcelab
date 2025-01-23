@@ -2,8 +2,8 @@
 
 Configurable framework for running Discrete Choice Experiments (DCE) using R Shiny.
 Built upon the [idefix](https://github.com/traets/idefix) R package for generating
-D-efficient designs, it adds experiment configuration, web deployment infrastructure,
-and automated data collection.
+D-efficient designs, it adds custom decision attributes, experiment configuration, 
+web deployment infrastructure, and automated data collection.
 
 ## Project Structure
 
@@ -86,14 +86,14 @@ saveRDS(token, "experiments/example_experiment/droptoken.rds")
 # - Leave unquoted: numbers, booleans (true/false), null, simple-text
 #
 # Structure:
-# 1. exp_id            - Experiment identifier
-# 2. design            - Core experiment settings
-# 3. ui                - Interface settings
-# 4. storage           - Data management
-# 5. completion        - Post-experiment handling
+# 1. exp_id             - Experiment identifier
+# 2. design             - Core experiment settings
+# 3. ui                 - Interface settings
+# 4. storage            - Data management
+# 5. completion         - Post-experiment handling
 # Optional:
-# - custom_attributes  - Display functions
-# - deployment         - shinyapps.io settings
+# - custom_attributes   - Display functions
+# - deployment          - shinyapps.io settings
 
 # Unique identifier for this experiment
 exp_id: example_experiment
@@ -114,11 +114,11 @@ ui:
   buttons_text: "Which option do you prefer?"   # Text shown above choice buttons
   shuffle_attributes: false                     # Whether to randomize attribute order
 
-# Custom attribute definitions
+# Custom attribute definitions (optional)
 custom_attributes:
   display_image:
     function_name: "display_image"              # Function name in custom.R
-    attribute_label: "Display Image"            # Label shown in the interface
+    attribute_label: "Displayed image"          # Label shown in the interface
 
   display_text:
     function_name: "display_majority_choice"    # Function name in custom.R
@@ -146,33 +146,7 @@ deployment:
 
 ### 3. Define attributes (columns) and their levels (rows) in `attributes.csv`
 
-### Custom Attributes
-
-The experiment supports custom attribute display functions defined in `config.yaml`:
-
-```yaml
-custom_attributes:
-  display_image:
-    function_name: "display_image"
-    attribute_label: "Display Image"
-  display_text:
-    function_name: "display_majority_choice"
-    attribute_label: " "
-```
-
-Custom functions must be defined in `experiments/{exp_id}/custom.R` and include:
-- Required parameter: `level`
-- Optional parameters: `choice_set`, `col_index`
-- Must return a character string (HTML allowed)
-
-Example custom function:
-```r
-display_image <- function(level, choice_set = NULL, col_index = NULL) {
-  sprintf('<img src="image%d.svg" style="width:48px;height:48px;">', level)
-}
-```
-
-### Attributes Configuration
+#### Attributes Configuration
 
 Define experiment attributes in `attributes.csv`:
 - Each column represents an attribute
@@ -181,11 +155,47 @@ Define experiment attributes in `attributes.csv`:
 - UTF-8 encoding required
 
 Example:
+
 ```csv
-How much would I save monthly from my salary?,Number of your friends participating in savings program,What amount would the employer contribute?,Is there a raise planned in the employment contract?,Current savings in your account,What amount would the State contribute?,Display Image
+How much would I save monthly from my salary?,Number of your friends participating in savings program,What amount would the employer contribute?,Is there a raise planned in the employment contract?,Current savings in your account,What amount would the State contribute?,Displayed image
 1%,None of your friends currently uses the savings program,1% of monthly salary,No planned raise,Less than 1000,0% of monthly salary (No State participation),1
 2%,10% of your friends currently uses the savings program,2% of monthly salary,Planned raise of 10% salary after 3-month probation period,1000-5000,1% of monthly salary,2
 5%,30% of your friends currently uses the savings program,5% of monthly salary,Planned raise of 10% salary after 6-month probation period,5000-10000,2% of monthly salary,3
+```
+
+#### Custom Attributes
+
+This toolkit supports custom attribute display functions configured in `config.yaml`:
+
+```yaml
+custom_attributes:
+  display_image:
+    function_name: "display_image"
+    attribute_label: "Displayed image"
+  display_text:
+    function_name: "display_majority_choice"
+    attribute_label: " "
+```
+
+> `attribute_label` must match attribute label (column) defined in `attributes.csv` for design-dependent custom attributes.
+> `function_name` must match the corresponding function name defined in `custom.R`.
+
+Custom attribute display functions can be defined in `experiments/{exp_id}/custom.R`. Each function receives a `context` object containing:
+
+- `choice_set`: The current choice set matrix
+- `col_index`: Current column being processed
+- `config`: Configuration parameters
+- `alternatives`: Available alternatives
+
+> Custom attribute functions must return a character string (HTML allowed)
+
+Example custom function:
+```r
+display_image <- function(context) {
+  level <- as.numeric(context$choice_set["Displayed image", context$col_index])
+  if (!is.numeric(level) || level < 1 || level > 3) return("")
+  sprintf('<img src="image%d.svg" style="width:48px;height:48px;">', level)
+}
 ```
 
 ## Deployment
@@ -252,4 +262,5 @@ This project is licensed under the GNU General Public License v3.0 - see [LICENS
 ## Authors
 
 Przemyslaw Marcowski, PhD <p.marcowski@gmail.com>
+
 Jakub Krawiec, PhD <krawiecjm@gmail.com>
