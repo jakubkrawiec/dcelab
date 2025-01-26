@@ -188,59 +188,83 @@ convert_responses <- function(resp, alts, n_alts) {
 #' @param config list configuration parameters
 #' @param exp_id character experiment identifier
 #' @param n_atts integer number of attributes
-#' @param token rdrop2 authentication token
 #' @return NULL
 #' @export
-save_experiment_data <- function(data, config, exp_id, n_atts, token) {
-  # Save choice data with text responses
+save_experiment_data <- function(data, config, exp_id, n_atts) {
+  # Format data for all storage methods
   survey_rows <- nrow(data$survey)
-  choice_data <- data.frame(
+  formatted_data <- data.frame(
     set = rep(1:length(data$responses), each = survey_rows),
     as.data.frame(data$survey, stringsAsFactors = FALSE, check.names = FALSE),
     resp = rep(data$responses, each = survey_rows),
     row.names = NULL
-    )
-
+  )
+  
   # Generate filename with timestamp
   timestamp <- as.integer(Sys.time())
+  filename <- sprintf("%s_%s.txt", exp_id, timestamp)
   
-  choice_filename <- sprintf("%s.txt", timestamp)
-
-  # Save data file to Dropbox
-  save_to_dropbox(choice_data, choice_filename, config, exp_id, token)
-
-  num_name <- sprintf("%s_num_data.txt", timestamp)
-  char_name <- sprintf("%s_char_data.txt", timestamp)
-  
-  # Save files to S3
-  save_to_s3(d, num_name, config, exp_id)
-  save_to_s3(unc_d, char_name, config, exp_id)
+  # Process configured storage providers
+  storage_providers <- names(config$storage)
+  for (provider in storage_providers) {
+    if (provider == "s3") {
+      tryCatch({
+        save_to_s3(formatted_data, filename, config$storage$s3, exp_id)
+      }, error = function(e) {
+        warning(sprintf("Failed to save data to S3: %s", e$message))
+      })
+    }
+  }
   
   invisible(NULL)
 }
-
 
 #' Save Data to S3
 #'
 #' @param data data.frame data to save
 #' @param filename character filename
-#' @param config list configuration parameters
+#' @param s3_config list S3-specific configuration parameters
 #' @param exp_id character experiment identifier
-#' @param token rdrop2 authentication token
 #' @return NULL
 #' @export
-save_to_s3 <- function(data, filename, config, exp_id) {
+save_to_s3 <- function(data, filename, s3_config, exp_id) {
   # Create temporary file
-  path <- file.path(tempdir(), filename)
-  write.table(data, path, row.names = TRUE, quote = FALSE,
-              sep = "\t", col.names = NA)
-  
-  # Upload directly to the bucket
-  aws.s3::put_object(
-    file = path,
-    object = filename,  # Po prostu nazwa pliku
-    bucket = config$storage$s3$bucket
+  temp_file <- tempfile(fileext = ".txt")
+  write.table(
+    data,
+    temp_file,
+    row.names = FALSE,
+    quote = FALSE,
+    sep = "\t",
+    col.names = TRUE,
+    fileEncoding = "UTF-8"
   )
+  
+  # Construct S3 object key with prefix
+  object_key <- file.path(
+    s3_config$prefix,
+    exp_id,
+    filename
+  )
+  
+  # Set AWS credentials
+  withr::with_envvar(
+    new = c(
+      "AWS_ACCESS_KEY_ID" = s3_config$access_key,
+      "AWS_SECRET_ACCESS_KEY" = s3_config$secret_key,
+      "AWS_DEFAULT_REGION" = s3_config$region
+    ),
+    {
+      aws.s3::put_object(
+        file = temp_file,
+        object = object_key,
+        bucket = s3_config$bucket
+      )
+    }
+  )
+  
+  # Clean up
+  unlink(temp_file)
   
   invisible(NULL)
 }

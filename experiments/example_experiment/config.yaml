@@ -43,11 +43,15 @@ custom_attributes:
     function_name: "display_majority_choice"    # Function name in custom.R
     attribute_label: " "                        # Label shown in the interface
 
-# Data storage configuration
+# Data storage configuration (optional)
+# Available providers: s3
 storage:
-  dropbox:
-    base_path: Repos/dcelab                     # Root path
-    data_path: data/raw                         # Directory for experiment data
+  s3:
+    bucket: bucket-name                         # S3 bucket name
+    prefix: data/raw                            # Path prefix for data storage
+    region: your-region                         # AWS region
+    access_key: your-access-key                 # AWS access key
+    secret_key: your-secret-key                 # AWS secret key
 
 # Post-experiment settings
 completion:
