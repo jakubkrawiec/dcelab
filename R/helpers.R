@@ -12,11 +12,12 @@
 #' @return NULL invisibly, errors if validation fails
 #' @export
 validate_config <- function(config) {
+  # Define required fields and their validation functions
   required_fields <- list(
     "exp_id" = is.character,
     "design" = function(x) is.list(x) && all(c("n_sets", "n_total", "n_alts", "alternatives", "alt_cte") %in% names(x)),
     "ui" = function(x) is.list(x) && all(c("buttons_text", "shuffle_attributes") %in% names(x)),
-    "storage" = function(x) is.list(x) && "s3" %in% names(x) && "bucket" %in% names(x$s3),
+    "storage" = is.list,
     "completion" = function(x) is.list(x) && "url" %in% names(x)
   )
   
@@ -48,9 +49,45 @@ validate_config <- function(config) {
     stop("design.n_total cannot be greater than design.n_sets")
   }
   
+  # Validate storage configuration
+  validate_storage_config(config$storage)
+  
   # Validate custom attributes if present
   if (!is.null(config$custom_attributes)) {
     validate_custom_attributes(config)
+  }
+  
+  invisible(NULL)
+}
+
+#' Validate Storage Configuration
+#'
+#' @param storage list Storage configuration object
+#' @return NULL invisibly, errors if validation fails
+#' @export
+validate_storage_config <- function(storage) {
+  storage_providers <- names(storage)
+  if (length(storage_providers) == 0) {
+    return(invisible(NULL))  # No storage configured
+  }
+  
+  # Define required fields for each provider available
+  provider_fields <- list(
+    s3 = c("bucket", "prefix", "region", "access_key", "secret_key")
+  )
+  
+  # Validate configured providers
+  for (provider in storage_providers) {
+    if (!provider %in% names(provider_fields)) {
+      stop(sprintf("Unsupported storage provider: %s", provider))
+    }
+    
+    missing_fields <- setdiff(provider_fields[[provider]], names(storage[[provider]]))
+    if (length(missing_fields) > 0) {
+      stop(sprintf("Missing required fields for %s provider: %s",
+                   provider,
+                   paste(missing_fields, collapse = ", ")))
+    }
   }
   
   invisible(NULL)
@@ -100,4 +137,3 @@ validate_custom_attributes <- function(config) {
   
   invisible(NULL)
 }
-
