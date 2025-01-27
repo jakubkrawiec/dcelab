@@ -32,6 +32,7 @@ design:
 ui:
   buttons_text: "Which option do you prefer?"   # Text shown above choice buttons
   shuffle_attributes: false                     # Whether to randomize attribute order
+  random_preselection: false  # Enable randomized preselection - works only for even n_total
 
 # Custom attribute definitions (optional)
 custom_attributes:

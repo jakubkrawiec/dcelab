@@ -83,7 +83,11 @@ ui <- fluidPage(
 
 # Define server
 server <- function(input, output, session) {
-  # Initialize reactive values
+  preselection_sequence <- generate_balanced_preselection(
+    n_total = config$design$n_total,
+    alternatives = config$design$alternatives
+  )
+  
   V <- reactiveValues(
     sn = 0,
     fulldes = design$design,
@@ -95,42 +99,64 @@ server <- function(input, output, session) {
     survey_data = list(),
     y_bin = numeric(),
     resp = character(),
-    atts_labs = atts_labs
+    atts_labs = atts_labs,
+    preselection_sequence = preselection_sequence
   )
-
+  
   # Display intro text
   output$intro <- renderText(
     readLines(file.path(resources_path, "intro.txt"), encoding = "UTF-8")
   )
-
-  # Enable OK button after choice
-  observeEvent(input$survey, {
-    enable("OK")
+  
+  observe({
+    # Włącz przycisk OK na pierwszej planszy lub jeśli wybrano opcję
+    if (V$sn == 0 || (!is.null(input$survey) && input$survey %in% config$design$alternatives)) {
+      enable("OK")
+    } else {
+      disable("OK")
+    }
   })
-
+  
+  
   # Handle OK button clicks
   observeEvent(input$OK, {
     disable("OK")
-
-    # Update set counter
-    V$sn <- V$sn + 1
-
-    # Clear intro text after first click
-    if (V$sn == 1) {
-      output$intro <- renderText(NULL)
+    
+    # Jeśli jesteśmy na ekranie startowym, przejdź do pierwszego wyboru
+    if (V$sn == 0) {
+      V$sn <- 1
+      output$intro <- renderText(NULL)  # Usuń tekst wprowadzenia
+    } else {
+      V$sn <- V$sn + 1
     }
-
-    # Update set number display
+    
+    # Wyświetl outro po ostatnim wyborze
+    if (V$sn > config$design$n_total) {
+      output$set_nr <- renderText(NULL)  # Usuń licznik wyborów
+      output$choice_set <- renderTable(NULL)  # Usuń tabelę wyborów
+      output$buttons <- renderUI(NULL)  # Usuń przyciski wyboru
+      
+      # Wyświetl tekst zakończenia
+      output$end <- renderText(
+        readLines(file.path(resources_path, "outro.txt"), encoding = "UTF-8")
+      )
+      
+      # Przekierowanie do zewnętrznego linku po opóźnieniu
+      shinyjs::delay(3000, {
+        shinyjs::runjs(sprintf("window.location.href='%s'", config$completion$url))
+      })
+      return()
+    }
+    
+    # Zaktualizuj licznik wyborów
     if (V$sn <= config$design$n_total) {
       output$set_nr <- renderText(
         paste("Choice:", V$sn, "/", config$design$n_total)
       )
-    } else {
-      output$set_nr <- renderText(NULL)
     }
-
-    # Handle choice sets
-    if (V$sn <= config$design$n_total) {
+    
+    # Obsługa zestawów wyborów
+    if (V$sn > 0 && V$sn <= config$design$n_total) {
       current_set <- select_choice_set(
         V = V,
         design = design$design,
@@ -142,7 +168,7 @@ server <- function(input, output, session) {
         n_atts = n_atts,
         config = config
       )
-
+      
       output$choice_set <- renderTable(
         current_set,
         rownames = TRUE,
@@ -150,25 +176,16 @@ server <- function(input, output, session) {
         class = "choice-table",
         align = paste0('l', paste0(rep('c', ncol(current_set)), collapse = ''))
       )
-
+      
       if (V$sn == 1) {
         V$choice_sets <- current_set
       } else {
         V$choice_sets <- rbind(V$choice_sets, current_set)
       }
-
-    } else {
-      output$choice_set <- renderTable(NULL)
-      if (V$sn == (config$design$n_total + 1)) {
-        output$end <- renderText(
-          readLines(file.path(resources_path, "outro.txt"), encoding = "UTF-8")
-        )
-        shinyjs::delay(100, enable("OK"))
-      }
     }
-
+    
     # Store response data
-    if (V$sn > 1 && V$sn <= (config$design$n_total + 1)) {
+    if (V$sn > 1 && V$sn <= config$design$n_total) {
       V$resp <- c(V$resp, input$survey)
       V$y_bin <- convert_responses(
         V$resp,
@@ -181,7 +198,7 @@ server <- function(input, output, session) {
       V$sdata$survey <- V$choice_sets
       V$survey_data <- V$sdata
     }
-
+    
     # Save final data
     if (V$sn == (config$design$n_total + 1)) {
       save_experiment_data(
@@ -192,27 +209,25 @@ server <- function(input, output, session) {
         token = drop_token
       )
     }
-
-    # Handle completion
-    if (V$sn > (config$design$n_total + 1)) {
-      shinyjs::runjs(sprintf("window.location.href='%s'", config$completion$url))
-      stopApp()
-    }
   })
-
-  # Display choice buttons
+  
+  
+  
+  
   output$buttons <- renderUI({
     if (V$sn > 0 && V$sn <= config$design$n_total) {
+      current_preselection <- V$preselection_sequence[V$sn]
+      
       radioButtons(
         "survey",
         config$ui$buttons_text,
-        config$design$alternatives,
+        choices = config$design$alternatives,
         inline = TRUE,
-        selected = "None"
+        selected = current_preselection
       )
     }
   })
+  
 }
-
 # Run application
 shinyApp(ui = ui, server = server)

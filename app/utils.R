@@ -241,3 +241,18 @@ save_to_dropbox <- function(data, filename, config, exp_id, token) {
 
   invisible(NULL)
 }
+
+#' Generate preselected responses
+
+generate_balanced_preselection <- function(n_total, alternatives) {
+  if (n_total %% length(alternatives) != 0) {
+    stop("n_total must be divisible by the number of alternatives.")
+  }
+  
+  half <- n_total / length(alternatives)
+  preselection <- c(rep(alternatives[1], half), rep(alternatives[2], half))
+  shuffled_preselection <- sample(preselection)
+  
+  return(shuffled_preselection)
+}
+

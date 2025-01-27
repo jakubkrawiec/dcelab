@@ -101,3 +101,9 @@ validate_custom_attributes <- function(config) {
   
   invisible(NULL)
 }
+
+#Add a validation check to ensure the random_preselection logic works only for even n_total:
+
+if (config$design$random_preselection && config$design$n_total %% 2 != 0) {
+  stop("random_preselection requires n_total to be divisible by the number of alternatives.")
+}
