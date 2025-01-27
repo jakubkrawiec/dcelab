@@ -56,11 +56,16 @@ design <- generate_design(
 design_file <- file.path(resources_path, "design.rds")
 saveRDS(design, file = design_file)
 
+# Print status
 cat("\nDesign generated and saved")
 cat("\nExperiment preparation complete")
-cat("\n- Files copied to: ", resources_path)
-cat("\n- Data will be saved to: ", data_path)
-cat("\n- D-error: ", round(design$error, 4))
+cat("\n- Files copied to:", resources_path)
+if (!is.null(config$storage$s3)) {
+  cat(sprintf("\n- Data will be saved to S3 bucket: %s/%s", 
+              config$storage$s3$bucket,
+              config$storage$s3$prefix))
+}
+cat("\n- D-error:", round(design$error, 4))
 
 # Copy resources
 resource_files <- list.files(exp_path, recursive = TRUE, include.dirs = FALSE)

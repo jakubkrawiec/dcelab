@@ -40,8 +40,8 @@ install.packages(c(
   "shinyjs",
   "tidyverse",
   "idefix",
-  "rdrop2",
-  "tmvtnorm",
+  "aws.s3",
+  "withr",
   "yaml",
   "rsconnect"
 ))
@@ -52,7 +52,7 @@ install.packages(c(
 - Dynamic choice experiment interface
 - D-optimal experimental design generation
 - Binary and multinomial choice options
-- Automatic data storage to cloud
+- Configurable data storage to cloud (AWS S3)
 - Progress tracking and completion redirect
 - Configurable attributes and levels
 - Local and shinyapps.io deployment options
@@ -69,11 +69,20 @@ install.packages(c(
 
 ## Setup
 
-### 1. Configure Dropbox authentication:
+### 1. Configure AWS S3 storage:
+
+Set up your S3 bucket and obtain AWS credentials. Then configure the storage section in your `config.yaml`:
 
 ```r
-token <- rdrop2::drop_auth()
-saveRDS(token, "experiments/example_experiment/droptoken.rds")
+# Data storage configuration
+# Available providers: s3
+storage:
+  s3:
+    bucket: bucket-name                         # S3 bucket name
+    prefix: data/raw                            # Path prefix for data storage
+    region: your-region                         # AWS region
+    access_key: your-access-key                 # AWS access key
+    secret_key: your-secret-key                 # AWS secret key
 ```
 
 ### 2. Configure your experiment in `experiments/example_experiment/config.yaml`:
@@ -124,11 +133,15 @@ custom_attributes:
     function_name: "display_majority_choice"    # Function name in custom.R
     attribute_label: " "                        # Label shown in the interface
 
-# Data storage configuration
+# Data storage configuration (optional)
+# Available providers: s3
 storage:
-  dropbox:
-    base_path: Repos/dcelab                     # Root path
-    data_path: data/raw                         # Directory for experiment data
+  s3:
+    bucket: bucket-name                         # S3 bucket name
+    prefix: data/raw                            # Path prefix for data storage
+    region: your-region                         # AWS region
+    access_key: your-access-key                 # AWS access key
+    secret_key: your-secret-key                 # AWS secret key
 
 # Post-experiment settings
 completion:
@@ -231,7 +244,12 @@ The preparation script will:
 
 ## Data Storage
 
-Response data is automatically saved to Dropbox as text responses with attribute levels (`{timestamp}.txt`)
+Response data is automatically saved to the configured storage provider. When using AWS S3,
+data is saved as text files containing responses with attribute levels, using the format
+`{experiment_id}_{timestamp}.txt`. The storage location within the S3 bucket follows the
+pattern `{prefix}/{experiment_id}/{filename}`. By default, the prefix is set to
+`data/raw` in the example configuration, but you can adjust this path in the storage
+settings to match your needs.
 
 ## Experiment Preparation
 

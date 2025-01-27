@@ -8,7 +8,8 @@
 
 library(shiny)
 library(shinyjs)
-library(rdrop2)
+library(aws.s3)
+library(withr)
 library(tidyverse)
 library(idefix)
 library(tmvtnorm)
@@ -23,7 +24,6 @@ atts <- read.csv(file.path(resources_path, "attributes.csv"),
                  check.names = FALSE,
                  encoding = "UTF-8")
 design <- readRDS(file.path(resources_path, "design.rds"))
-drop_token <- readRDS(file.path(resources_path, "droptoken.rds"))
 
 # Load custom functions if configured
 custom_funcs <- NULL
@@ -188,8 +188,7 @@ server <- function(input, output, session) {
         data = V$survey_data,
         config = config,
         exp_id = config$exp_id,
-        n_atts = n_atts,
-        token = drop_token
+        n_atts = n_atts
       )
     }
 
