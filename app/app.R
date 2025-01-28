@@ -8,7 +8,8 @@
 
 library(shiny)
 library(shinyjs)
-library(rdrop2)
+library(aws.s3)
+library(withr)
 library(tidyverse)
 library(idefix)
 library(tmvtnorm)
@@ -23,7 +24,6 @@ atts <- read.csv(file.path(resources_path, "attributes.csv"),
                  check.names = FALSE,
                  encoding = "UTF-8")
 design <- readRDS(file.path(resources_path, "design.rds"))
-drop_token <- readRDS(file.path(resources_path, "droptoken.rds"))
 
 # Load custom functions if configured
 custom_funcs <- NULL
@@ -83,24 +83,17 @@ ui <- fluidPage(
 
 # Define server
 server <- function(input, output, session) {
-  preselection_sequence <- generate_balanced_preselection(
-    n_total = config$design$n_total,
-    alternatives = config$design$alternatives
-  )
-  
-  V <- reactiveValues(
-    sn = 0,
-    fulldes = design$design,
+  # Initialize reactive values
+  rv <- reactiveValues(
+    trial = 0,
+    full_design = design$design,
     choice_set = NA,
     choice_sets = matrix(NA, nrow = (config$design$n_sets * config$design$n_alts),
                          ncol = n_atts),
     custom_funcs = custom_funcs,
-    sdata = list(),
     survey_data = list(),
-    y_bin = numeric(),
-    resp = character(),
     atts_labs = atts_labs,
-    preselection_sequence = preselection_sequence
+    option_clicked = FALSE
   )
   
   # Display intro text
@@ -108,57 +101,32 @@ server <- function(input, output, session) {
     readLines(file.path(resources_path, "intro.txt"), encoding = "UTF-8")
   )
   
-  observe({
-    # Włącz przycisk OK na pierwszej planszy lub jeśli wybrano opcję
-    if (V$sn == 0 || (!is.null(input$survey) && input$survey %in% config$design$alternatives)) {
-      enable("OK")
-    } else {
-      disable("OK")
-    }
-  })
-  
-  
-  # Handle OK button clicks
+  # Handle trial progression
   observeEvent(input$OK, {
+    rv$option_clicked <- FALSE
     disable("OK")
     
-    # Jeśli jesteśmy na ekranie startowym, przejdź do pierwszego wyboru
-    if (V$sn == 0) {
-      V$sn <- 1
-      output$intro <- renderText(NULL)  # Usuń tekst wprowadzenia
-    } else {
-      V$sn <- V$sn + 1
+    # Update set counter
+    rv$trial <- rv$trial + 1
+    
+    # Clear intro text after first click
+    if (rv$trial == 1) {
+      output$intro <- renderText(NULL)
     }
     
-    # Wyświetl outro po ostatnim wyborze
-    if (V$sn > config$design$n_total) {
-      output$set_nr <- renderText(NULL)  # Usuń licznik wyborów
-      output$choice_set <- renderTable(NULL)  # Usuń tabelę wyborów
-      output$buttons <- renderUI(NULL)  # Usuń przyciski wyboru
-      
-      # Wyświetl tekst zakończenia
-      output$end <- renderText(
-        readLines(file.path(resources_path, "outro.txt"), encoding = "UTF-8")
-      )
-      
-      # Przekierowanie do zewnętrznego linku po opóźnieniu
-      shinyjs::delay(3000, {
-        shinyjs::runjs(sprintf("window.location.href='%s'", config$completion$url))
-      })
-      return()
-    }
-    
-    # Zaktualizuj licznik wyborów
-    if (V$sn <= config$design$n_total) {
+    # Update set number display
+    if (rv$trial <= config$design$n_total) {
       output$set_nr <- renderText(
-        paste("Choice:", V$sn, "/", config$design$n_total)
+        paste("Choice:", rv$trial, "/", config$design$n_total)
       )
+    } else {
+      output$set_nr <- renderText(NULL)
     }
     
-    # Obsługa zestawów wyborów
-    if (V$sn > 0 && V$sn <= config$design$n_total) {
+    # Handle choice sets
+    if (rv$trial <= config$design$n_total) {
       current_set <- select_choice_set(
-        V = V,
+        rv = rv,
         design = design$design,
         bs = bs,
         es = es,
@@ -177,57 +145,96 @@ server <- function(input, output, session) {
         align = paste0('l', paste0(rep('c', ncol(current_set)), collapse = ''))
       )
       
-      if (V$sn == 1) {
-        V$choice_sets <- current_set
+      if (rv$trial == 1) {
+        rv$choice_sets <- current_set
       } else {
-        V$choice_sets <- rbind(V$choice_sets, current_set)
+        rv$choice_sets <- rbind(rv$choice_sets, current_set)
+      }
+      
+    } else {
+      output$choice_set <- renderTable(NULL)
+      if (rv$trial == (config$design$n_total + 1)) {
+        output$end <- renderText(
+          readLines(file.path(resources_path, "outro.txt"), encoding = "UTF-8")
+        )
+        enable("OK")
       }
     }
     
     # Store response data
-    if (V$sn > 1 && V$sn <= config$design$n_total) {
-      V$resp <- c(V$resp, input$survey)
-      V$y_bin <- convert_responses(
-        V$resp,
-        config$design$alternatives,
-        config$design$n_alts
-      )
-      V$sdata$bin_responses <- V$y_bin
-      V$sdata$responses <- V$resp
-      V$sdata$design <- V$fulldes
-      V$sdata$survey <- V$choice_sets
-      V$survey_data <- V$sdata
+    if (rv$trial > 1 && rv$trial <= (config$design$n_total + 1)) {
+      rv$survey_data$responses <- c(rv$survey_data$responses, input$survey)
+      rv$survey_data$design <- rv$full_design
+      rv$survey_data$survey <- rv$choice_sets
     }
     
     # Save final data
-    if (V$sn == (config$design$n_total + 1)) {
+    if (rv$trial == (config$design$n_total + 1)) {
       save_experiment_data(
-        data = V$survey_data,
+        data = rv$survey_data,
         config = config,
         exp_id = config$exp_id,
-        n_atts = n_atts,
-        token = drop_token
+        n_atts = n_atts
       )
+    }
+    
+    # Handle completion
+    if (!is.null(config$completion) && (rv$trial > (config$design$n_total + 1))) {
+      shinyjs::runjs(sprintf("window.location.href='%s'", config$completion$url))
+      stopApp()
     }
   })
   
-  
-  
-  
+  # Display choice buttons and track clicks
   output$buttons <- renderUI({
-    if (V$sn > 0 && V$sn <= config$design$n_total) {
-      current_preselection <- V$preselection_sequence[V$sn]
-      
-      radioButtons(
-        "survey",
-        config$ui$buttons_text,
-        choices = config$design$alternatives,
-        inline = TRUE,
-        selected = current_preselection
+    if (rv$trial > 0 && rv$trial <= config$design$n_total) {
+      tagList(
+        tags$script("
+          $(document).ready(function() {
+            $(document).on('click', '.radio-options input[type=\"radio\"]', function() {
+              Shiny.setInputValue('option_clicked', true, {priority: 'event'});
+            });
+          });
+        "),
+        div(
+          class = "radio-options",
+          radioButtons(
+            "survey",
+            config$ui$buttons_text,
+            config$design$alternatives,
+            inline = TRUE,
+            selected = character(0)
+          )
+        )
       )
     }
   })
   
+  # Track option clicks and enable OK button
+  observeEvent(input$option_clicked, {
+    if (input$option_clicked) {
+      rv$option_clicked <- TRUE
+      enable("OK")
+    }
+  })
+  
+  # Handle default option selection
+  observe({
+    if (rv$trial > 0 && rv$trial <= config$design$n_total && !rv$option_clicked && !is.null(config$ui$default_option)) {
+      selected <- if (identical(config$ui$default_option, "random")) {
+        sample(config$design$alternatives, 1)
+      } else {
+        config$ui$default_option
+      }
+      
+      updateRadioButtons(
+        session,
+        "survey",
+        selected = selected
+      )
+    }
+  })
 }
+
 # Run application
 shinyApp(ui = ui, server = server)

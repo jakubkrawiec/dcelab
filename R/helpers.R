@@ -16,9 +16,7 @@ validate_config <- function(config) {
   required_fields <- list(
     "exp_id" = is.character,
     "design" = function(x) is.list(x) && all(c("n_sets", "n_total", "n_alts", "alternatives", "alt_cte") %in% names(x)),
-    "ui" = function(x) is.list(x) && all(c("buttons_text", "shuffle_attributes") %in% names(x)),
-    "storage" = function(x) is.list(x) && "dropbox" %in% names(x),
-    "completion" = function(x) is.list(x) && "url" %in% names(x)
+    "ui" = function(x) is.list(x) && all(c("buttons_text", "shuffle_attributes", "default_option") %in% names(x))
   )
   
   # Check each required field exists and is valid
@@ -29,11 +27,6 @@ validate_config <- function(config) {
     if (!required_fields[[field]](config[[field]])) {
       stop(sprintf("Invalid configuration for: %s", field))
     }
-  }
-  
-  # Validate UI configuration
-  if (!is.logical(config$ui$shuffle_attributes)) {
-    stop("ui.shuffle_attributes must be 'true' or 'false'")
   }
   
   # Validate design parameters
@@ -49,9 +42,70 @@ validate_config <- function(config) {
     stop("design.n_total cannot be greater than design.n_sets")
   }
   
-  # Validate custom attributes if present
+  # Validate UI configuration
+  if (!is.logical(config$ui$shuffle_attributes)) {
+    stop("ui.shuffle_attributes must be 'true' or 'false'")
+  }
+  
+  if (!identical(config$ui$default_option, "random") && 
+      !identical(config$ui$default_option, NULL) &&
+      !config$ui$default_option %in% config$design$alternatives) {
+    stop(sprintf(
+      "ui.default_option must be null, 'random', or one of: %s",
+      paste(config$design$alternatives, collapse = ", ")
+    ))
+  }
+  
+  # Validate optional configurations
+  if (!is.null(config$completion)) {
+    if (!is.list(config$completion) || is.null(config$completion$url) || 
+        !is.character(config$completion$url)) {
+      stop("completion.url must be a character string if completion is configured")
+    }
+  }
+  
+  # Storage configuration check and notification
+  if (is.null(config$storage)) {
+    message("Note: No storage configuration provided. Data will not be saved.")
+  } else {
+    validate_storage_config(config$storage)
+  }
+  
   if (!is.null(config$custom_attributes)) {
     validate_custom_attributes(config)
+  }
+  
+  invisible(NULL)
+}
+
+#' Validate Storage Configuration
+#'
+#' @param storage list Storage configuration object
+#' @return NULL invisibly, errors if validation fails
+#' @export
+validate_storage_config <- function(storage) {
+  storage_providers <- names(storage)
+  if (length(storage_providers) == 0) {
+    return(invisible(NULL))  # No storage configured
+  }
+  
+  # Define required fields for each provider available
+  provider_fields <- list(
+    s3 = c("bucket", "prefix", "region", "access_key", "secret_key")
+  )
+  
+  # Validate configured providers
+  for (provider in storage_providers) {
+    if (!provider %in% names(provider_fields)) {
+      stop(sprintf("Unsupported storage provider: %s", provider))
+    }
+    
+    missing_fields <- setdiff(provider_fields[[provider]], names(storage[[provider]]))
+    if (length(missing_fields) > 0) {
+      stop(sprintf("Missing required fields for %s provider: %s",
+                   provider,
+                   paste(missing_fields, collapse = ", ")))
+    }
   }
   
   invisible(NULL)
@@ -100,10 +154,4 @@ validate_custom_attributes <- function(config) {
   }
   
   invisible(NULL)
-}
-
-#Add a validation check to ensure the random_preselection logic works only for even n_total:
-
-if (config$design$random_preselection && config$design$n_total %% 2 != 0) {
-  stop("random_preselection requires n_total to be divisible by the number of alternatives.")
 }
