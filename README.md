@@ -2,7 +2,7 @@
 
 Configurable framework for running Discrete Choice Experiments (DCE) using R Shiny.
 Built upon the [idefix](https://github.com/traets/idefix) R package for generating
-D-efficient designs, it adds custom decision attributes, experiment configuration, 
+D-efficient designs, it adds custom decision attributes, experiment configuration,
 web deployment infrastructure, and automated data collection.
 
 ## Project Structure
@@ -94,15 +94,24 @@ storage:
 # - Quote text with spaces/special chars: "Option A", "$5/month"
 # - Leave unquoted: numbers, booleans (true/false), null, simple-text
 #
-# Structure:
-# 1. exp_id             - Experiment identifier
-# 2. design             - Core experiment settings
-# 3. ui                 - Interface settings
-# 4. storage            - Data management
-# 5. completion         - Post-experiment handling
-# Optional:
-# - custom_attributes   - Display functions
-# - deployment          - shinyapps.io settings
+# Required Configuration:
+# 1. exp_id                   - Experiment identifier
+# 2. design                   - Core experiment settings
+#      - n_sets               - Total number of choice sets
+#      - n_total              - Sets per participant
+#      - n_alts               - Alternatives per choice
+#      - alternatives         - Alternative labels
+#      - alt_cte              - Alternative-specific constants
+# 3. ui                       - Interface settings
+#      - buttons_text         - Text above choice buttons
+#      - shuffle_attributes   - Randomize attribute order
+#      - default_option       - Choice preselection (null, "random", or option name)
+#
+# Additional Configuration:
+# - storage            - Data management settings
+# - completion         - Post-experiment redirect settings
+# - custom_attributes  - Custom display function definitions
+# - deployment         - shinyapps.io deployment settings
 
 # Unique identifier for this experiment
 exp_id: example_experiment
@@ -122,6 +131,7 @@ design:
 ui:
   buttons_text: "Which option do you prefer?"   # Text shown above choice buttons
   shuffle_attributes: false                     # Whether to randomize attribute order
+  default_option: random                        # Choice preselection: must be null, "random", or option name
 
 # Custom attribute definitions (optional)
 custom_attributes:
@@ -150,7 +160,7 @@ completion:
 # Deployment configuration
 deployment:
   enabled: false                                # Whether to auto-deploy
-  appname: null                                 # Custom application name
+  appname: null                                 # Custom application name (defaults to exp_id)
   account:
     name: your-account                          # Account name
     token: your-token                           # Account token
