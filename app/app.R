@@ -37,7 +37,7 @@ atts_labs <- lapply(atts, function(x) x[!is.na(x)])
 atts_lvls <- as.numeric(lengths(atts_labs))
 names(atts_lvls) <- atts_names
 atts_coding <- rep("E", length(atts))
-n_atts <- length(atts_labs)
+atts_num <- length(atts_labs)
 
 # Initialize design parameters
 bs <- seq(1, (nrow(design$design) - config$design$n_alts + 1), config$design$n_alts)
@@ -85,46 +85,46 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   # Initialize reactive values
   rv <- reactiveValues(
-    trial = 0,
+    set_num = 0,
     full_design = design$design,
     choice_set = NA,
     choice_sets = matrix(NA, nrow = (config$design$n_sets * config$design$n_alts),
-                         ncol = n_atts),
+                         ncol = atts_num),
     custom_funcs = custom_funcs,
     survey_data = list(),
     atts_labs = atts_labs,
     option_clicked = FALSE
   )
-  
+
   # Display intro text
   output$intro <- renderText(
     readLines(file.path(resources_path, "intro.txt"), encoding = "UTF-8")
   )
-  
+
   # Handle trial progression
   observeEvent(input$OK, {
     rv$option_clicked <- FALSE
     disable("OK")
-    
+
     # Update set counter
-    rv$trial <- rv$trial + 1
-    
+    rv$set_num <- rv$set_num + 1
+
     # Clear intro text after first click
-    if (rv$trial == 1) {
+    if (rv$set_num == 1) {
       output$intro <- renderText(NULL)
     }
-    
+
     # Update set number display
-    if (rv$trial <= config$design$n_total) {
+    if (rv$set_num <= config$design$n_total) {
       output$set_nr <- renderText(
-        paste("Choice:", rv$trial, "/", config$design$n_total)
+        paste("Choice:", rv$set_num, "/", config$design$n_total)
       )
     } else {
       output$set_nr <- renderText(NULL)
     }
-    
+
     # Handle choice sets
-    if (rv$trial <= config$design$n_total) {
+    if (rv$set_num <= config$design$n_total) {
       current_set <- select_choice_set(
         rv = rv,
         design = design$design,
@@ -133,10 +133,10 @@ server <- function(input, output, session) {
         atts = atts,
         atts_lvls = atts_lvls,
         atts_coding = atts_coding,
-        n_atts = n_atts,
+        atts_num = atts_num,
         config = config
       )
-      
+
       output$choice_set <- renderTable(
         current_set,
         rownames = TRUE,
@@ -144,50 +144,54 @@ server <- function(input, output, session) {
         class = "choice-table",
         align = paste0('l', paste0(rep('c', ncol(current_set)), collapse = ''))
       )
-      
-      if (rv$trial == 1) {
+
+      if (rv$set_num == 1) {
         rv$choice_sets <- current_set
       } else {
         rv$choice_sets <- rbind(rv$choice_sets, current_set)
       }
-      
+
     } else {
       output$choice_set <- renderTable(NULL)
-      if (rv$trial == (config$design$n_total + 1)) {
+      if (rv$set_num == (config$design$n_total + 1)) {
         output$end <- renderText(
           readLines(file.path(resources_path, "outro.txt"), encoding = "UTF-8")
         )
         enable("OK")
       }
     }
-    
+
     # Store response data
-    if (rv$trial > 1 && rv$trial <= (config$design$n_total + 1)) {
+    if (rv$set_num > 1 && rv$set_num <= (config$design$n_total + 1)) {
       rv$survey_data$responses <- c(rv$survey_data$responses, input$survey)
       rv$survey_data$design <- rv$full_design
       rv$survey_data$survey <- rv$choice_sets
+
+      # Save default option if configured
+      if (!is.null(config$ui$default_option)) {
+        rv$survey_data$defaults <- c(rv$survey_data$defaults, rv$default_option)
+        }
+        rv$default_option <- NULL
     }
-    
+
     # Save final data
-    if (rv$trial == (config$design$n_total + 1)) {
+    if (rv$set_num == (config$design$n_total + 1)) {
       save_experiment_data(
         data = rv$survey_data,
-        config = config,
-        exp_id = config$exp_id,
-        n_atts = n_atts
+        config = config
       )
     }
-    
+
     # Handle completion
-    if (!is.null(config$completion) && (rv$trial > (config$design$n_total + 1))) {
+    if (!is.null(config$completion) && (rv$set_num > (config$design$n_total + 1))) {
       shinyjs::runjs(sprintf("window.location.href='%s'", config$completion$url))
       stopApp()
     }
   })
-  
+
   # Display choice buttons and track clicks
   output$buttons <- renderUI({
-    if (rv$trial > 0 && rv$trial <= config$design$n_total) {
+    if (rv$set_num > 0 && rv$set_num <= config$design$n_total) {
       tagList(
         tags$script("
           $(document).ready(function() {
@@ -209,7 +213,7 @@ server <- function(input, output, session) {
       )
     }
   })
-  
+
   # Track option clicks and enable OK button
   observeEvent(input$option_clicked, {
     if (input$option_clicked) {
@@ -217,16 +221,18 @@ server <- function(input, output, session) {
       enable("OK")
     }
   })
-  
+
   # Handle default option selection
   observe({
-    if (rv$trial > 0 && rv$trial <= config$design$n_total && !rv$option_clicked && !is.null(config$ui$default_option)) {
+    if (rv$set_num > 0 && rv$set_num <= config$design$n_total && !rv$option_clicked && !is.null(config$ui$default_option)) {
       selected <- if (identical(config$ui$default_option, "random")) {
         sample(config$design$alternatives, 1)
       } else {
         config$ui$default_option
       }
-      
+
+      rv$default_option <- selected
+
       updateRadioButtons(
         session,
         "survey",

@@ -15,13 +15,13 @@
 #' @param atts data.frame attributes
 #' @param atts_lvls numeric vector attribute levels
 #' @param atts_coding character vector coding types
-#' @param n_atts integer number of attributes
+#' @param atts_num integer number of attributes
 #' @param config list configuration parameters
 #' @return matrix current choice set
 #' @export
 select_choice_set <- function(rv, design, bs, es, atts, atts_lvls, atts_coding,
-                              n_atts, config) {
-  set <- design[bs[rv$trial]:es[rv$trial], ]
+                              atts_num, config) {
+  set <- design[bs[rv$set_num]:es[rv$set_num], ]
   choice_set <- idefix::Decode(
     des = set,
     n.alts = config$design$n_alts,
@@ -31,7 +31,7 @@ select_choice_set <- function(rv, design, bs, es, atts, atts_lvls, atts_coding,
   )[[1]]
 
   # Format choice set with original column names and preserve original attribute names
-  choice_set <- t(choice_set[, 1:n_atts])
+  choice_set <- t(choice_set[, 1:atts_num])
   colnames(choice_set) <- config$design$alternatives
   rownames(choice_set) <- names(atts) # Use original names from attributes.csv
 
@@ -157,30 +157,37 @@ apply_custom_attributes <- function(choice_set, custom_funcs, config) {
 #'
 #' @param data list experiment data
 #' @param config list configuration parameters
-#' @param exp_id character experiment identifier
-#' @param n_atts integer number of attributes
 #' @return NULL
 #' @export
-save_experiment_data <- function(data, config, exp_id, n_atts) {
-  # Format data for all storage methods
-  survey_rows <- nrow(data$survey)
+save_experiment_data <- function(data, config) {
+  # Format data for storage
+  n_attributes <- length(unique(rownames(data$survey)))
   formatted_data <- data.frame(
-    set = rep(1:length(data$responses), each = survey_rows),
+    set = rep(seq_along(data$responses), each = n_attributes),
+    attribute = rownames(data$survey),
     as.data.frame(data$survey, stringsAsFactors = FALSE, check.names = FALSE),
-    response = rep(data$responses, each = survey_rows),
+    response = rep(data$responses, each = n_attributes),
     row.names = NULL
   )
 
-  # Generate filename with timestamp
-  timestamp <- as.integer(Sys.time())
-  filename <- sprintf("%s_%s.txt", exp_id, timestamp)
+  # Add defaults column if present
+  if (!is.null(data$defaults)) {
+    formatted_data$default <- rep(data$defaults, each = n_attributes)
+  }
+
+  # Sort data by set number
+  formatted_data <- formatted_data[order(formatted_data$set), ]
+
+  # Generate filename with formatted timestamp
+  timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+  filename <- sprintf("%s_%s.txt", config$exp_id, timestamp)
 
   # Process configured storage providers
   storage_providers <- names(config$storage)
   for (provider in storage_providers) {
     if (provider == "s3") {
       tryCatch({
-        save_to_s3(formatted_data, filename, config$storage$s3, exp_id)
+        save_to_s3(formatted_data, filename, config$storage$s3, config$exp_id)
       }, error = function(e) {
         warning(sprintf("Failed to save data to S3: %s", e$message))
       })
