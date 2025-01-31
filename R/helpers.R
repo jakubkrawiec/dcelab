@@ -15,8 +15,8 @@ validate_config <- function(config) {
   # Define required fields and their validation functions
   required_fields <- list(
     "exp_id" = is.character,
-    "design" = function(x) is.list(x) && all(c("n_sets", "n_total", "n_alts", "alternatives", "alt_cte") %in% names(x)),
-    "ui" = function(x) is.list(x) && all(c("buttons_text", "shuffle_attributes", "default_option") %in% names(x))
+    "design" = function(x) is.list(x) && all(c("n_sets", "n_total", "n_alts", "alternatives") %in% names(x)),
+    "ui" = function(x) is.list(x) && all(c("buttons_text", "shuffle_attributes", "default_option", "no_choice") %in% names(x))
   )
   
   # Check each required field exists and is valid
@@ -54,6 +54,13 @@ validate_config <- function(config) {
       "ui.default_option must be null, 'random', or one of: %s",
       paste(config$design$alternatives, collapse = ", ")
     ))
+  }
+  
+  # Validate no_choice setting if present
+  if (!is.null(config$ui$no_choice)) {
+    if (!(isFALSE(config$ui$no_choice) || is.character(config$ui$no_choice))) {
+      stop("ui.no_choice must be either false or a character string")
+    }
   }
   
   # Validate optional configurations

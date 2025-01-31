@@ -13,20 +13,13 @@
 #' @param n_sets integer number of choice sets
 #' @param n_alts integer number of alternatives
 #' @param par_draws matrix of parameter draws
-#' @param alt_cte logical vector alternative-specific constants
-#' @param parallel logical use parallel processing
 #' @return list containing design matrix and diagnostics
 #' @export
-generate_design <- function(lvls, coding, n_sets, n_alts, par_draws, 
-                            alt_cte = NULL, parallel = FALSE) {
+generate_design <- function(lvls, coding, n_sets, n_alts, par_draws) {
   # Input validation
   checkmate::assert_numeric(lvls, min.len = 2)
   checkmate::assert_character(coding)
   checkmate::assert_matrix(par_draws)
-  
-  if (is.null(alt_cte)) {
-    alt_cte <- rep(0L, n_alts)
-  }
   
   # Generate design using coordinate exchange algorithm
   des <- idefix::CEA(
@@ -35,8 +28,6 @@ generate_design <- function(lvls, coding, n_sets, n_alts, par_draws,
     n.sets = n_sets,
     n.alts = n_alts,
     par.draws = par_draws,
-    alt.cte = alt_cte,
-    parallel = parallel,
     best = TRUE
   )
   

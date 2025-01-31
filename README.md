@@ -105,7 +105,8 @@ storage:
 # 3. ui                       - Interface settings
 #      - buttons_text         - Text above choice buttons
 #      - shuffle_attributes   - Randomize attribute order
-#      - default_option       - Choice preselection (null, "random", or option name)
+#      - default_option       - Choice preselection
+#      - no_choice            - Optional no-choice option
 #
 # Additional Configuration:
 # - storage            - Data management settings
@@ -124,14 +125,13 @@ design:
   alternatives:                                 # Labels shown for each alternative
     - "Option A"                                # First alternative label
     - "Option B"                                # Second alternative label
-  alt_cte: [0, 0]                               # Alternative-specific constants (0 = no constant)
-  no_choice: null                               # Optional no-choice option
 
 # User interface customization
 ui:
   buttons_text: "Which option do you prefer?"   # Text shown above choice buttons
   shuffle_attributes: false                     # Whether to randomize attribute order
   default_option: random                        # Choice preselection: must be null, "random", or option name
+  no_choice: "Don't know"                       # Set to false to disable no-choice option
 
 # Custom attribute definitions (optional)
 custom_attributes:

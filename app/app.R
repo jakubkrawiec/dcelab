@@ -192,6 +192,12 @@ server <- function(input, output, session) {
   # Display choice buttons and track clicks
   output$buttons <- renderUI({
     if (rv$set_num > 0 && rv$set_num <= config$design$n_total) {
+      alternatives <- config$design$alternatives
+      if (!is.null(config$ui$no_choice) && !isFALSE(config$ui$no_choice)) {
+        insert_position <- length(alternatives) %/% 2
+        alternatives <- append(alternatives, config$ui$no_choice, after = insert_position)
+      }
+      
       tagList(
         tags$script("
           $(document).ready(function() {
@@ -205,7 +211,7 @@ server <- function(input, output, session) {
           radioButtons(
             "survey",
             config$ui$buttons_text,
-            config$design$alternatives,
+            alternatives,
             inline = TRUE,
             selected = character(0)
           )
@@ -224,15 +230,23 @@ server <- function(input, output, session) {
 
   # Handle default option selection
   observe({
-    if (rv$set_num > 0 && rv$set_num <= config$design$n_total && !rv$option_clicked && !is.null(config$ui$default_option)) {
+    if (rv$set_num > 0 && rv$set_num <= config$design$n_total && 
+        !rv$option_clicked && !is.null(config$ui$default_option)) {
+      
+      alternatives <- config$design$alternatives
+      if (!is.null(config$ui$no_choice) && !isFALSE(config$ui$no_choice)) {
+        insert_position <- length(alternatives) %/% 2
+        alternatives <- append(alternatives, config$ui$no_choice, after = insert_position)
+      }
+      
       selected <- if (identical(config$ui$default_option, "random")) {
-        sample(config$design$alternatives, 1)
+        sample(alternatives, 1)
       } else {
         config$ui$default_option
       }
-
+      
       rv$default_option <- selected
-
+      
       updateRadioButtons(
         session,
         "survey",

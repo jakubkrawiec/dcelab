@@ -48,8 +48,7 @@ design <- generate_design(
   coding = atts_coding,
   n_sets = config$design$n_sets,
   n_alts = config$design$n_alts,
-  par_draws = priors$draws,
-  alt_cte = config$design$alt_cte
+  par_draws = priors$draws
 )
 
 # Save design
