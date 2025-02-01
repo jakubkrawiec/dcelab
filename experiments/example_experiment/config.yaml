@@ -17,6 +17,7 @@
 #      - shuffle_attributes   - Randomize attribute order
 #      - default_option       - Choice preselection
 #      - no_choice            - Optional no-choice option
+#      - explicit_choice      - OK button behavior on choice
 #
 # Additional Configuration:
 # - storage            - Data management settings
@@ -42,6 +43,7 @@ ui:
   shuffle_attributes: false                     # Whether to randomize attribute order
   default_option: random                        # Choice preselection: must be null, "random", or option name
   no_choice: "Don't know"                       # Set to false to disable no-choice option
+  explicit_choice: true                         # Whether explicit click on option is required
 
 # Custom attribute definitions (optional)
 custom_attributes:

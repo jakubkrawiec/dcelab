@@ -104,7 +104,11 @@ server <- function(input, output, session) {
   # Handle trial progression
   observeEvent(input$OK, {
     rv$option_clicked <- FALSE
-    disable("OK")
+    if (isTRUE(config$ui$explicit_choice)) {
+      disable("OK")
+    } else {
+      enable("OK")
+    }
 
     # Update set counter
     rv$set_num <- rv$set_num + 1
@@ -224,7 +228,9 @@ server <- function(input, output, session) {
   observeEvent(input$option_clicked, {
     if (input$option_clicked) {
       rv$option_clicked <- TRUE
-      enable("OK")
+      if (isTRUE(config$ui$explicit_choice)) {
+        enable("OK")
+      }
     }
   })
 
