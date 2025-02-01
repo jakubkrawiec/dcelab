@@ -107,6 +107,7 @@ storage:
 #      - shuffle_attributes   - Randomize attribute order
 #      - default_option       - Choice preselection
 #      - no_choice            - Optional no-choice option
+#      - explicit_choice      - OK button behavior on choice
 #
 # Additional Configuration:
 # - storage            - Data management settings
@@ -132,6 +133,7 @@ ui:
   shuffle_attributes: false                     # Whether to randomize attribute order
   default_option: random                        # Choice preselection: must be null, "random", or option name
   no_choice: "Don't know"                       # Set to false to disable no-choice option
+  explicit_choice: true                         # Whether explicit click on option is required
 
 # Custom attribute definitions (optional)
 custom_attributes:
@@ -141,7 +143,7 @@ custom_attributes:
 
   display_text:
     function_name: "display_majority_choice"    # Function name in custom.R
-    attribute_label: " "                        # Label shown in the interface
+    attribute_label: "Majority choice"          # Label shown in the interface
 
 # Data storage configuration (optional)
 # Available providers: s3
@@ -201,6 +203,7 @@ custom_attributes:
 ```
 
 > `attribute_label` must match attribute label (column) defined in `attributes.csv` for design-dependent custom attributes.
+
 > `function_name` must match the corresponding function name defined in `custom.R`.
 
 Custom attribute display functions can be defined in `experiments/{exp_id}/custom.R`. Each function receives a `context` object containing:

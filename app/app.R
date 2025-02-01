@@ -50,6 +50,7 @@ app_name <- if (!is.null(config$deployment$appname)) config$deployment$appname e
 ui <- fluidPage(
   title = app_name,
   useShinyjs(),
+  # Format choice table
   tags$head(
     tags$style(HTML("
       .choice-table td {
@@ -64,6 +65,24 @@ ui <- fluidPage(
       }
     "))
   ),
+  # JavaScript for timing
+  tags$script("
+      var startTime;
+      $(document).ready(function() {
+        // Handler for starting the timer
+        Shiny.addCustomMessageHandler('startTiming', function(message) {
+          startTime = performance.now();
+        });
+        
+        // Handler for option selection
+        $(document).on('click', '.radio-options input[type=\"radio\"]', function() {
+          var endTime = performance.now();
+          var reactionTime = endTime - startTime;
+          Shiny.setInputValue('reaction_time', reactionTime);
+          Shiny.setInputValue('option_clicked', true, {priority: 'event'});
+        });
+      });
+    "),
   column(12, align = "center",
          style = "padding-top:200px; padding-bottom:5px",
          textOutput("set_nr")),
@@ -202,6 +221,9 @@ server <- function(input, output, session) {
         alternatives <- append(alternatives, config$ui$no_choice, after = insert_position)
       }
       
+      # Start timing when buttons are rendered
+      session$sendCustomMessage("startTiming", list())
+      
       tagList(
         tags$script("
           $(document).ready(function() {
@@ -231,6 +253,13 @@ server <- function(input, output, session) {
       if (isTRUE(config$ui$explicit_choice)) {
         enable("OK")
       }
+    }
+  })
+  
+  # Track reaction time
+  observeEvent(input$reaction_time, {
+    if (!is.null(input$reaction_time)) {
+      rv$survey_data$reaction_times <- c(rv$survey_data$reaction_times, input$reaction_time)
     }
   })
 

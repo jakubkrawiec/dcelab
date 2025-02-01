@@ -162,26 +162,28 @@ apply_custom_attributes <- function(choice_set, custom_funcs, config) {
 save_experiment_data <- function(data, config) {
   # Format data for storage
   n_attributes <- length(unique(rownames(data$survey)))
+  
   formatted_data <- data.frame(
     set = rep(seq_along(data$responses), each = n_attributes),
     attribute = rownames(data$survey),
     as.data.frame(data$survey, stringsAsFactors = FALSE, check.names = FALSE),
     response = rep(data$responses, each = n_attributes),
+    reaction_time = rep(data$reaction_times, each = n_attributes),
     row.names = NULL
   )
-
+  
   # Add defaults column if present
   if (!is.null(data$defaults)) {
     formatted_data$default <- rep(data$defaults, each = n_attributes)
   }
-
+  
   # Sort data by set number
   formatted_data <- formatted_data[order(formatted_data$set), ]
-
+  
   # Generate filename with formatted timestamp
   timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
   filename <- sprintf("%s_%s.txt", config$exp_id, timestamp)
-
+  
   # Process configured storage providers
   storage_providers <- names(config$storage)
   for (provider in storage_providers) {
@@ -193,7 +195,7 @@ save_experiment_data <- function(data, config) {
       })
     }
   }
-
+  
   invisible(NULL)
 }
 
