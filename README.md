@@ -1,3 +1,5 @@
+![Preview](preview.png)
+
 # Toolkit for building and deploying Discrete Choice Experiments (DCE) with Shiny
 
 Configurable framework for running Discrete Choice Experiments (DCE) using R Shiny.
