@@ -18,6 +18,9 @@ rsconnect/
 *.tar.gz
 *.Rcheck/
 
+# Test results
+test-results.xml
+
 # Experiment resources
 droptoken.rds
 app/www/*
