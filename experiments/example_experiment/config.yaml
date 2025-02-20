@@ -40,7 +40,7 @@ design:
 # User interface customization
 ui:
   buttons_text: "Which option do you prefer?"   # Text shown above choice buttons
-  shuffle_attributes: false                     # Whether to randomize attribute order
+  shuffle_attributes: "participant"             # false, "trial", or "participant"
   default_option: random                        # Choice preselection: must be null, "random", or option name
   no_choice: "Don't know"                       # Set to false to disable no-choice option
   explicit_choice: true                         # Whether explicit click on option is required

@@ -68,13 +68,28 @@ test_that("validate_config validates design parameters", {
 
 # UI configuration validation
 test_that("validate_config validates UI configuration", {
-  # Check shuffle_attributes type
+  # Verify that invalid shuffle_attributes value is rejected
   invalid_config <- valid_config
-  invalid_config$ui$shuffle_attributes <- "yes"
+  invalid_config$ui$shuffle_attributes <- "invalid_mode"
   expect_error(validate_config(invalid_config),
-               "ui.shuffle_attributes must be 'true' or 'false'")
-
-  # Check default_option validity
+               "ui.shuffle_attributes must be FALSE, 'trial', or 'participant'")
+  
+  # Check shuffle_attributes = "trial"
+  valid_config_trial <- valid_config
+  valid_config_trial$ui$shuffle_attributes <- "trial"
+  expect_silent(validate_config(valid_config_trial))
+  
+  # Check shuffle_attributes = "participant"
+  valid_config_participant <- valid_config
+  valid_config_participant$ui$shuffle_attributes <- "participant"
+  expect_silent(validate_config(valid_config_participant))
+  
+  # Check shuffle_attributes = FALSE
+  valid_config_false <- valid_config
+  valid_config_false$ui$shuffle_attributes <- FALSE
+  expect_silent(validate_config(valid_config_false))
+  
+  # Check if default_option validation works
   invalid_config <- valid_config
   invalid_config$ui$default_option <- "Option C"
   expect_error(validate_config(invalid_config),

@@ -29,22 +29,27 @@ select_choice_set <- function(rv, design, bs, es, atts, atts_lvls, atts_coding,
     coding = atts_coding,
     alt.cte = config$design$alt_cte
   )[[1]]
-
-  # Format choice set with original column names and preserve original attribute names
+  
+  # Format choice set
   choice_set <- t(choice_set[, 1:atts_num])
   colnames(choice_set) <- config$design$alternatives
-  rownames(choice_set) <- names(atts) # Use original names from attributes.csv
-
+  rownames(choice_set) <- names(atts)
+  
   # Apply custom attributes if configured
   if (!is.null(rv$custom_funcs)) {
     choice_set <- apply_custom_attributes(choice_set, rv$custom_funcs, config)
   }
-
-  # Apply shuffle if configured
-  if (config$ui$shuffle_attributes) {
+  
+  # Handle attribute shuffling
+  if (identical(config$ui$shuffle_attributes, "participant")) {
+    if (is.null(rv$attribute_order)) {
+      rv$attribute_order <- sample(rownames(choice_set))
+    }
+    choice_set <- choice_set[rv$attribute_order, , drop = FALSE]
+  } else if (identical(config$ui$shuffle_attributes, "trial")) {
     choice_set <- choice_set[sample(nrow(choice_set)), , drop = FALSE]
   }
-
+  
   return(choice_set)
 }
 
@@ -180,23 +185,26 @@ save_experiment_data <- function(data, config) {
   # Sort data by set number
   formatted_data <- formatted_data[order(formatted_data$set), ]
   
-  # Generate filename with formatted timestamp
-  timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-  filename <- sprintf("%s_%s.txt", config$exp_id, timestamp)
-  
-  # Process configured storage providers
-  storage_providers <- names(config$storage)
-  for (provider in storage_providers) {
-    if (provider == "s3") {
-      tryCatch({
-        save_to_s3(formatted_data, filename, config$storage$s3, config$exp_id)
-      }, error = function(e) {
-        warning(sprintf("Failed to save data to S3: %s", e$message))
-      })
+  # Generate filename with formatted timestamp and save if storage is configured
+  if (!is.null(config$storage)) {
+    timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+    filename <- sprintf("%s_%s.txt", config$exp_id, timestamp)
+    
+    # Process configured storage providers
+    storage_providers <- names(config$storage)
+    for (provider in storage_providers) {
+      if (provider == "s3") {
+        tryCatch({
+          save_to_s3(formatted_data, filename, config$storage$s3, config$exp_id)
+        }, error = function(e) {
+          warning(sprintf("Failed to save data to S3: %s", e$message))
+        })
+      }
     }
   }
   
-  invisible(NULL)
+  # Return the formatted data
+  return(formatted_data)
 }
 
 #' Save Data to S3

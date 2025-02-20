@@ -44,8 +44,8 @@ validate_config <- function(config) {
   }
   
   # Validate UI configuration
-  if (!is.logical(config$ui$shuffle_attributes)) {
-    stop("ui.shuffle_attributes must be 'true' or 'false'")
+  if (!config$ui$shuffle_attributes %in% c(FALSE, "trial", "participant")) {
+    stop("ui.shuffle_attributes must be FALSE, 'trial', or 'participant'")
   }
   
   if (!identical(config$ui$default_option, "random") && 

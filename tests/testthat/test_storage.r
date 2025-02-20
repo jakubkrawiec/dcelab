@@ -101,3 +101,78 @@ test_that("save_experiment_data formats data correctly", {
   # Verify S3 save was called exactly once
   expect_called(mock_s3, 1)
 })
+
+test_that("save_experiment_data structures data correctly for different configurations", {
+  # Create test matrix with meaningful attribute structure
+  base_matrix <- matrix(
+    c("10%", "20%", "30%",
+      "$100", "$200", "$300",
+      "Yes", "No", "Maybe"),
+    nrow = 3,
+    dimnames = list(
+      c("Discount", "Price", "Available"),
+      c("Option A", "Option B", "Option C")
+    )
+  )
+  
+  # Test standard configuration
+  standard_data <- list(
+    survey = base_matrix[, 1:2],  # Only use first two columns for responses
+    responses = c("Option A", "Option B"),
+    reaction_times = c(1500, 2000)
+  )
+  standard_config <- list(exp_id = "test")
+  
+  formatted_data <- save_experiment_data(standard_data, standard_config)
+  expect_equal(nrow(formatted_data), nrow(base_matrix) * length(standard_data$responses))
+  expect_equal(sort(unique(formatted_data$attribute)), sort(rownames(base_matrix)))
+  expect_equal(sort(unique(formatted_data$response)), sort(standard_data$responses))
+  
+  # Test participant-level attribute shuffling
+  shuffled_order <- c("Price", "Available", "Discount")
+  shuffled_matrix <- base_matrix[shuffled_order, 1:2]
+  participant_data <- list(
+    survey = shuffled_matrix,
+    responses = c("Option B", "Option A"),
+    reaction_times = c(1200, 1800)
+  )
+  participant_config <- list(
+    exp_id = "test",
+    ui = list(shuffle_attributes = "participant")
+  )
+  
+  formatted_data <- save_experiment_data(participant_data, participant_config)
+  expect_equal(sort(unique(formatted_data$attribute)), sort(shuffled_order))
+  
+  # Test with no-choice option
+  nochoice_data <- list(
+    survey = base_matrix[, 1:2],
+    responses = c("Option A", "Don't know"),
+    reaction_times = c(1000, 3000)
+  )
+  nochoice_config <- list(
+    exp_id = "test",
+    ui = list(no_choice = "Don't know")
+  )
+  
+  formatted_data <- save_experiment_data(nochoice_data, nochoice_config)
+  expect_true("Don't know" %in% formatted_data$response)
+  expect_equal(sort(unique(formatted_data$response)), sort(c("Option A", "Don't know")))
+  
+  # Test with default options
+  default_data <- list(
+    survey = base_matrix[, 1:2],
+    responses = c("Option C", "Option A"),
+    reaction_times = c(800, 1200),
+    defaults = c("Option C", "Option B")
+  )
+  default_config <- list(
+    exp_id = "test",
+    ui = list(default_option = "random")
+  )
+  
+  formatted_data <- save_experiment_data(default_data, default_config)
+  expect_true("default" %in% colnames(formatted_data))
+  expect_equal(sort(unique(formatted_data$default)), sort(default_data$defaults))
+  expect_equal(sort(unique(formatted_data$reaction_time)), sort(default_data$reaction_times))
+})
