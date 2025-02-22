@@ -102,6 +102,19 @@ ui <- fluidPage(
 
 # Define server
 server <- function(input, output, session) {
+  # Pobieranie user_id z URL
+  query <- reactive({
+    parseQueryString(session$clientData$url_search)
+  })
+  
+  user_id <- reactive({
+    if (!is.null(query()$id)) {
+      gsub("^\\$", "", query()$id)  # Usunięcie znaku $ z początku ID
+    } else {
+      "unknown"
+    }
+  })
+  
   # Initialize reactive values
   rv <- reactiveValues(
     set_num = 0,
@@ -112,7 +125,8 @@ server <- function(input, output, session) {
     custom_funcs = custom_funcs,
     survey_data = list(),
     atts_labs = atts_labs,
-    option_clicked = FALSE
+    option_clicked = FALSE,
+    id = NULL  # Dodanie ID do wartości reaktywnych
   )
 
   # Display intro text
@@ -207,7 +221,8 @@ server <- function(input, output, session) {
 
     # Handle completion
     if (!is.null(config$completion) && (rv$set_num > (config$design$n_total + 1))) {
-      shinyjs::runjs(sprintf("window.location.href='%s'", config$completion$url))
+      redirect_url <- paste0(config$completion$url, "?id=", user_id())
+      shinyjs::runjs(sprintf("window.location.href='%s'", redirect_url))
       stopApp()
     }
   })
